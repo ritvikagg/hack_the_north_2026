@@ -22,6 +22,24 @@ export interface WorkoutEvent {
   steps: number;
   source: 'pedometer' | 'debug-injected'; // debug-injected = the demo safety button
   verified: boolean;
+  gait?: GaitAnalysis;
+}
+
+/** Explainable summary of a raw phone-IMU walking session. Not a medical assessment. */
+export interface GaitAnalysis {
+  isVerified: boolean;
+  confidence: number;
+  reason: string;
+  durationS: number;
+  sampleRateHz: number;
+  cadenceSpm: number;
+  periodicity: number;
+  motionStd: number;
+  gyroEnergy: number;
+  estimatedSteps: number;
+  reportedSteps: number | null;
+  stepAgreement: number;
+  sampleCount: number;
 }
 
 /** A step threshold that unlocks a % of the locked deposit. Owned by Person 2. */

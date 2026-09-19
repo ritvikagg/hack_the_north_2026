@@ -1,17 +1,20 @@
 // PERSON 1 (UI) + PERSON 2 (data) share this screen.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { colors, spacing, typography, radius } from '../src/theme';
 import {
   isPedometerAvailable,
   requestPedometerPermission,
   watchSteps,
+  clearDebugOverride,
   injectDebugSteps,
+  isDebugOverrideActive,
 } from '../src/lib/pedometer';
 import { evaluateUnlock } from '../src/lib/unlockRules';
 import { useAppStore } from '../src/store/useAppStore';
 import { WorkoutEvent } from '../src/types';
+import { cancelGaitCapture, startGaitCapture, stopGaitCapture } from '../src/lib/gait';
 
 type PermissionState = 'checking' | 'granted' | 'denied' | 'unavailable';
 
@@ -19,6 +22,7 @@ export default function Workout() {
   const [permission, setPermission] = useState<PermissionState>('checking');
   const [steps, setSteps] = useState(0);
   const [tracking, setTracking] = useState(false);
+  const [gaitError, setGaitError] = useState<string | null>(null);
   const unsubscribeRef = useRef<(() => void) | null>(null);
 
   const user = useAppStore(s => s.user);
@@ -39,13 +43,23 @@ export default function Workout() {
       setPermission(granted ? 'granted' : 'denied');
     })();
 
-    return () => unsubscribeRef.current?.();
+    return () => {
+      unsubscribeRef.current?.();
+      cancelGaitCapture();
+    };
   }, []);
 
-  const startTracking = useCallback(() => {
-    setSteps(0);
-    setTracking(true);
-    unsubscribeRef.current = watchSteps(setSteps);
+  const startTracking = useCallback(async () => {
+    setGaitError(null);
+    try {
+      clearDebugOverride();
+      await startGaitCapture('workout');
+      setSteps(0);
+      setTracking(true);
+      unsubscribeRef.current = watchSteps(setSteps);
+    } catch (error) {
+      setGaitError(error instanceof Error ? error.message : 'Could not start gait validation.');
+    }
   }, []);
 
   const endTracking = useCallback(() => {
@@ -53,13 +67,25 @@ export default function Workout() {
     unsubscribeRef.current = null;
     setTracking(false);
 
-    const result = evaluateUnlock(steps, user.lockedAmount, user.streak);
+    const usedDebugCount = isDebugOverrideActive();
+    let gait;
+    try {
+      gait = stopGaitCapture(steps);
+    } catch (error) {
+      setGaitError(error instanceof Error ? error.message : 'Gait capture was interrupted.');
+      return;
+    }
+    const canUnlock = !usedDebugCount && gait.analysis.isVerified;
+    const result = canUnlock
+      ? evaluateUnlock(steps, user.lockedAmount, user.streak)
+      : { unlockedAmount: 0, newStreak: 0, ruleApplied: null };
     const event: WorkoutEvent = {
       id: String(Date.now()),
       timestamp: new Date().toISOString(),
       steps,
-      source: 'pedometer',
-      verified: result.ruleApplied !== null,
+      source: usedDebugCount ? 'debug-injected' : 'pedometer',
+      verified: canUnlock && result.ruleApplied !== null,
+      gait: gait.analysis,
     };
     logWorkout(event, result.unlockedAmount, result.newStreak);
     router.push('/dashboard');
@@ -78,7 +104,7 @@ export default function Workout() {
       <View style={styles.container}>
         <Text style={[typography.h3, { color: colors.textPrimary }]}>No pedometer on this device</Text>
         <Text style={[typography.body, { color: colors.textSecondary, marginTop: spacing.sm, textAlign: 'center' }]}>
-          Use the debug buttons below to demo the unlock flow anyway.
+          {__DEV__ ? 'Debug controls below can exercise the UI, but never unlock funds.' : 'A hardware step sensor is required for verified rewards.'}
         </Text>
         <DebugRow onInject={injectDebugSteps} />
       </View>
@@ -100,6 +126,9 @@ export default function Workout() {
     <View style={styles.container}>
       <Text style={[typography.h1, { color: colors.pink }]}>{steps}</Text>
       <Text style={[typography.body, { color: colors.textSecondary }]}>steps this session</Text>
+      <Text style={[typography.caption, styles.gaitCopy]}>
+        Gait validation records 50 Hz phone motion and checks that its walking rhythm agrees with the step counter.
+      </Text>
 
       <Pressable
         style={[styles.button, { backgroundColor: tracking ? colors.danger : colors.purple }]}
@@ -111,6 +140,12 @@ export default function Workout() {
       </Pressable>
 
       {tracking && <DebugRow onInject={setSteps} />}
+      {gaitError && <Text style={[typography.caption, styles.error]}>{gaitError}</Text>}
+      {!tracking && (
+        <Link href="/analysis" style={[typography.body, styles.analysisLink]}>
+          Open walking analysis and CSV export
+        </Link>
+      )}
     </View>
   );
 }
@@ -121,6 +156,7 @@ export default function Workout() {
  * Only render this in dev builds if you don't want it visible on stage.
  */
 function DebugRow({ onInject }: { onInject: (steps: number) => void }) {
+  if (!__DEV__) return null;
   return (
     <View style={styles.debugRow}>
       {[2000, 5000, 8000].map(n => (
@@ -157,5 +193,21 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.border,
+  },
+  gaitCopy: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    maxWidth: 340,
+    lineHeight: 18,
+  },
+  analysisLink: {
+    color: colors.pink,
+    marginTop: spacing.lg,
+  },
+  error: {
+    color: colors.danger,
+    textAlign: 'center',
+    marginTop: spacing.md,
   },
 });

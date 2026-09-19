@@ -7,13 +7,11 @@
     "icon": "./assets/images/icon.png",
     "scheme": "exposcaffold",
     "userInterfaceStyle": "automatic",
-    "android": {
-  "permissions": ["android.permission.ACTIVITY_RECOGNITION"]
-},
     "ios": {
       "icon": "./assets/expo.icon"
     },
     "android": {
+      "permissions": ["android.permission.ACTIVITY_RECOGNITION"],
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

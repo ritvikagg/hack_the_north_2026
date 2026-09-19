@@ -15,6 +15,7 @@ export default function RootLayout() {
       <Stack.Screen name="deposit" options={{ title: 'Deposit' }} />
       <Stack.Screen name="dashboard" options={{ title: 'Dashboard' }} />
       <Stack.Screen name="workout" options={{ title: 'Workout' }} />
+      <Stack.Screen name="analysis" options={{ title: 'Walking analysis' }} />
     </Stack>
   );
 }

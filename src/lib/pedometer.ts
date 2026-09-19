@@ -63,3 +63,8 @@ export function injectDebugSteps(steps: number) {
 export function clearDebugOverride() {
   debugOverride = null;
 }
+
+/** Debug-injected counts are deliberately never eligible for gait verification. */
+export function isDebugOverrideActive() {
+  return debugOverride !== null;
+}
