@@ -10,6 +10,8 @@ persistence — no backend for the demo).
 | `useAppStore.ts` | Existing user/deposit/workout store (Person 3). |
 | `challengeEngine.ts` | Pure challenge logic — no side effects, no storage. |
 | `useChallengeStore.ts` | Persisted zustand store wrapping the engine. |
+| `seedData.ts` | Sample `Challenge` objects for UI dev (`SEED_CHALLENGE_*`). |
+| `DEMO.md` | On-stage demo checklist (reset → fast-forward → live final day). |
 | `*.test.ts` | Jest tests (`npm test`). |
 | `README.md` | This file. |
 
