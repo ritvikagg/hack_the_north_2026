@@ -41,3 +41,8 @@ example
 # generated native folders
 /ios
 /android
+
+# Standalone native gait collector build state
+/native-collector/.gradle/
+/native-collector/app/build/
+/native-collector/local.properties

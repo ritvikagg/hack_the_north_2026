@@ -76,3 +76,31 @@ your fallback if it misbehaves on stage.
 
 Wire dashboard → real store data, workout screen → real pedometer +
 unlock rules. Fix whatever's mismatched in `types.ts` now, not at hour 20.
+
+## Consolidated gait tooling
+
+This is the single repository for the Expo app, gait collector, dataset, and scoring prototype:
+
+- `native-collector/` â€” standalone Android collector used to record high-rate gait CSVs, including screen-off recording support.
+- `data/raw/gait_sessions/` â€” the 23 original collected session CSVs.
+- `scripts/train_gait_baseline.py` â€” reproducibly trains the prototype from the raw sessions.
+- `models/gait_baseline.json` â€” the current trained model artifact.
+- `service/gait_scoring_api.py` â€” local scoring API for the backend.
+
+### Run the gait scoring API
+
+From this repository root in Git Bash or PowerShell:
+
+```bash
+python service/gait_scoring_api.py
+```
+
+Do not escape underscores in the command. The API exposes `GET http://127.0.0.1:8787/health` and accepts a completed CSV as a raw `text/csv` request body at `POST http://127.0.0.1:8787/score`.
+
+The Expo app also launches from this root:
+
+```bash
+npx.cmd expo start --android
+```
+
+The scoring API is local-only. The backend should call it server-side and use its `genuine_probability` as one gait-quality signal, not as a medical or identity decision.
