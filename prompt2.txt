@@ -1,0 +1,8 @@
+Continue on feature/challenge-engine. Using the types in types/challenge.ts, create store/challengeEngine.ts with pure, fully unit-tested functions (no side effects, no async, no storage):
+
+- createChallenge(depositAmount: number, totalDays: number, dailyThreshold: number, startDate?: string): Challenge -- initializes all days as 'pending' with stakeAmount = depositAmount / totalDays (handle rounding so stakes sum exactly to depositAmount, e.g. put remainder cents on the last day).
+- resolveDay(challenge: Challenge, date: string, result: 'hit' | 'missed', actualSteps?: number): Challenge -- returns a NEW Challenge object (don't mutate) with that day's status updated, and sets challenge.status to 'completed' once every day has moved past 'pending', regardless of hit/missed mix. Ask me if that's ambiguous rather than guessing silently.
+- getChallengeSummary(challenge: Challenge): ChallengeSummary -- forfeitedAmount = sum of stakeAmount for 'missed' days, refundableAmount = sum of stakeAmount for 'hit' days, daysRemaining = count of 'pending' days, currentStreak = consecutive 'hit' days counting back from the most recent resolved day, daysCompleted = count of non-pending days.
+- isChallengeComplete(challenge: Challenge): boolean
+
+Validate inputs (totalDays between 15-30, depositAmount > 0, threshold > 0) and throw clear errors otherwise. Write a companion store/challengeEngine.test.ts with Jest covering: normal progression, a full-miss day, rounding edge cases on stake division, and completion detection. Run the tests and make sure they pass before opening the PR.
