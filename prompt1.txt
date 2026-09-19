@@ -1,0 +1,30 @@
+I'm building an Expo (React Native, TypeScript) app for a hackathon. Work in a new branch called feature/challenge-engine off main. This is a savings-commitment fitness app: a user deposits money, commits to a daily step goal for a set number of days (15-30), and if they miss a day they forfeit that day's slice of the deposit. Completing every day returns the full deposit.
+
+Create a `types/challenge.ts` file defining these exact interfaces (other teammates will import these, so match this precisely):
+
+interface DayRecord {
+  date: string; // ISO date, e.g. "2026-09-19"
+  status: 'pending' | 'hit' | 'missed';
+  stakeAmount: number; // depositAmount / totalDays
+  actualSteps?: number;
+}
+
+interface Challenge {
+  id: string;
+  depositAmount: number;
+  totalDays: number;
+  dailyGoal: { type: 'steps'; threshold: number };
+  startDate: string; // ISO date
+  days: DayRecord[];
+  status: 'active' | 'completed' | 'abandoned';
+}
+
+interface ChallengeSummary {
+  forfeitedAmount: number;
+  refundableAmount: number;
+  daysRemaining: number;
+  currentStreak: number;
+  daysCompleted: number;
+}
+
+Don't build any logic yet, just the types file plus a brief README.md in a new `store/` folder describing the module's purpose for teammates. Open a PR when done.
