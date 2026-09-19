@@ -74,7 +74,14 @@ and granted only to `authenticated`.
 | --- | --- | --- | --- |
 | `party_members_select` | SELECT | `is_party_member(party_id)` | only members can see a party's roster — pledges and standings are not public. |
 | `party_members_insert` | INSERT | `user_id = auth.uid()` AND `status = 'active'` AND `payout_amount IS NULL` AND `party_is_open(party_id)` | a user can join only themselves and only while the party is open; they cannot self-assign `completed` or a payout at join time. |
-| — | UPDATE / DELETE | *(no policy → denied)* | `status` and `payout_amount` are settlement outputs and must **never** be user-writable. There is intentionally no general UPDATE policy, so no column on this table is client-mutable; joins/leaves are modeled as inserts only. |
+| `party_members_delete_open` | DELETE | `user_id = auth.uid()` AND `party_is_open(party_id)` | a user may leave by deleting their own row while the party is still open; once it starts, the row is settlement state. |
+| — | UPDATE | *(no policy → denied)* | `status` and `payout_amount` are settlement outputs and must **never** be user-writable. There is intentionally no UPDATE policy, so no column on this table is client-mutable. |
+
+### Views
+
+| View | Purpose |
+| --- | --- |
+| `open_parties` | `parties` rows where `status = 'open'` plus `member_count`. Owner-evaluated (bypasses RLS) so non-members can see roster sizes on the browse screen — rosters themselves stay member-only. SELECT granted to `authenticated`. |
 
 ### `party_day_records`
 
