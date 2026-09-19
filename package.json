@@ -5,6 +5,8 @@
   "dependencies": {
     "@expo/ui": "~57.0.19",
     "@react-native-async-storage/async-storage": "^3.1.1",
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.116.0",
     "expo": "~57.0.24",
     "expo-constants": "~57.0.19",
     "expo-device": "~57.0.2",

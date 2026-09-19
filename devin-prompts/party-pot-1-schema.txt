@@ -1,0 +1,11 @@
+I'm adding a group "pot" feature to this Expo/Supabase app. Work on a new branch feature/party-pot. If Supabase isn't already initialized in this repo, run `supabase init` and ask me for the project URL, anon key, and service role key rather than guessing or hardcoding placeholders.
+
+Business rules: multiple users join a "party," each pledging the same fixed amount, committing to a shared daily step goal over totalDays (15-30, same range as our solo challenge feature). At the end, anyone who missed even one day forfeits their ENTIRE pledge into a pool. Members who hit every single day split nothing - a single winner (highest total steps among full-completers, tiebreak by earliest join time) takes the whole forfeited pool minus a 10% house cut. If literally nobody completes all days, no house cut is taken and everyone gets their own pledge back.
+
+Design and create Postgres migrations under supabase/migrations for:
+- profiles (id references auth.users, display_name, created_at)
+- parties (id, name, creator_id, pledge_amount as integer cents, total_days, daily_step_threshold, start_date, status: open|active|settled|cancelled, house_cut_bps default 1000, winner_id nullable, settled_at nullable, created_at)
+- party_members (id, party_id, user_id, status: active|completed|failed default active, payout_amount nullable, joined_at, unique on party_id+user_id)
+- party_day_records (id, party_member_id, date, status: pending|hit|missed default pending, actual_steps nullable, recorded_at nullable, unique on party_member_id+date)
+
+Write RLS policies with security as the priority since this involves pledged money: any authenticated user can read open parties (to browse/join); only a member can read the members/day-records of parties they belong to; a user can insert their own party_members row only while the party is 'open'; a user can insert/update ONLY their own party_day_records rows and only while the party is 'active'; status and payout_amount on party_members must NOT be writable directly by users - those are only ever set by a privileged function (built in a later prompt). Document the full policy set and why in supabase/README.md. Apply the migrations against the linked project and confirm they succeed.
