@@ -1,0 +1,12 @@
+Continue on feature/challenge-engine. Build store/useChallengeStore.ts using Zustand with the persist middleware backed by AsyncStorage (@react-native-async-storage/async-storage -- install it if not present). Wrap the pure functions in store/challengeEngine.ts, don't reimplement the logic.
+
+State: activeChallenge: Challenge | null, challengeHistory: Challenge[].
+
+Actions:
+- startChallenge(depositAmount, totalDays, dailyThreshold): sets activeChallenge via createChallenge, errors if one is already active.
+- recordDayResult(date, result, actualSteps?): calls resolveDay on activeChallenge, updates state, and if the challenge becomes complete, moves it into challengeHistory and clears activeChallenge.
+- getSummary(): returns getChallengeSummary(activeChallenge) or null.
+- resetDemo(): clears all state -- this is for us to reset between hackathon demo runs, make it obvious/easy to call.
+- devFastForward(days: number): DEV-ONLY helper that auto-resolves the next N pending days using random or specified hit/miss results, purely so we can demo a mid-challenge or near-complete state on stage without waiting real days. Gate it clearly as dev-only.
+
+Add a short usage example in store/README.md showing how a teammate's UI component would call startChallenge and recordDayResult, and how the step-tracking teammate would call recordDayResult after computing a day's pedometer result. Open the PR.
