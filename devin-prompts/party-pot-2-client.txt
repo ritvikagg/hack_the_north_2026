@@ -1,0 +1,9 @@
+Continue on feature/party-pot. Build client-side functions in lib/parties.ts (TypeScript, using the supabase-js client already configured in this repo - check for an existing client instance before creating a new one):
+
+- createParty(name, pledgeAmount, totalDays, dailyStepThreshold, startDate): inserts a party as 'open' with the creator automatically added as the first party_members row.
+- joinParty(partyId): inserts a party_members row for the current authenticated user, rejects if party.status !== 'open' or the user already joined, with a clear thrown error either way.
+- listOpenParties(): returns open parties with member count, for a browse/join screen.
+- getPartyDetails(partyId): returns the party plus all party_members (with display_name joined from profiles) and, if the current user is a member, their own day records.
+- leaveParty(partyId): only allowed while party.status === 'open'.
+
+Write these against the RLS policies from the previous migration - don't add a service-role client here, this should all work under the normal authenticated user's permissions. Add a short lib/parties.test.ts (or integration test against a local Supabase instance if `supabase start` is available) covering the join-twice-rejected and join-after-start-rejected cases. Open a PR.

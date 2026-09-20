@@ -1,0 +1,5 @@
+Continue on feature/party-pot. Add lib/partyDayRecords.ts:
+
+- recordPartyDay(partyMemberId, date, status, actualSteps?): upserts today's party_day_records row for the CURRENT user only (derive their party_members id server-side/via RLS, don't trust a client-passed id blindly - validate it belongs to auth.uid()). If this is the party's final day and status is 'missed', or all days are now resolved and none are missed, immediately update that member's party_members.status to 'completed' or 'failed' accordingly (this can happen client-side since it only touches the user's own row, but do NOT compute payout_amount or winner here - that's the settlement step next).
+
+Also add lib/usePartyRealtime.ts: a hook subscribing to Supabase Realtime on party_members and party_day_records filtered to one partyId, so all members see each other's live hit/miss status and running pot total without polling. Include a brief usage example in a comment for whoever wires up the UI.
