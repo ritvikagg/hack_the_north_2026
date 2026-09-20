@@ -6,7 +6,9 @@
 // ─────────────────────────────────────────────────────────────────
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { deviceStorage, hydrationFinished } from './storage';
+import type { WorkoutEvent } from '../types';
+import { reconcileStepChallenge } from '../lib/activity';
 import { Challenge, ChallengeSummary } from '@/types/challenge';
 import {
   createChallenge,
@@ -31,6 +33,7 @@ interface ChallengeStore {
   recordDayResult: (date: string, result: DayResult, actualSteps?: number) => void;
   getSummary: () => ChallengeSummary | null;
   resetDemo: () => void;
+  syncWorkouts: (workouts: WorkoutEvent[], now?: Date) => void;
   devFastForward: (days: number, results?: DayResult[]) => void;
 }
 
@@ -46,7 +49,18 @@ export const useChallengeStore = create<ChallengeStore>()(
             'a challenge is already active — finish or resetDemo() before starting a new one'
           );
         }
-        set({ activeChallenge: createChallenge(depositAmount, totalDays, dailyThreshold) });
+        const challenge = createChallenge(depositAmount, totalDays, dailyThreshold);
+        challenge.id += `-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        set({ activeChallenge: challenge });
+      },
+
+      syncWorkouts: (workouts, now = new Date()) => {
+        const { activeChallenge, challengeHistory } = get();
+        if (!activeChallenge) return;
+        const next = reconcileStepChallenge(activeChallenge, workouts, now);
+        if (next === activeChallenge) return;
+        if (isChallengeComplete(next)) set({ activeChallenge: null, challengeHistory: [...challengeHistory, next] });
+        else set({ activeChallenge: next });
       },
 
       recordDayResult: (date, result, actualSteps) => {
@@ -77,6 +91,7 @@ export const useChallengeStore = create<ChallengeStore>()(
       // without waiting real days. Pass `results` to script the
       // outcomes, or omit for random hit/miss. No-op outside dev.
       devFastForward: (days, results) => {
+        if (!Number.isInteger(days) || days < 1) throw new Error('Choose a positive whole number of days.');
         if (!isDev()) {
           console.warn('[useChallengeStore] devFastForward is dev-only — ignoring call.');
           return;
@@ -103,7 +118,8 @@ export const useChallengeStore = create<ChallengeStore>()(
     }),
     {
       name: 'unnamed-app-challenge-store',
-      storage: createJSONStorage(() => AsyncStorage),
+      onRehydrateStorage: () => (state, error) => hydrationFinished(state, error),
+      storage: createJSONStorage(() => deviceStorage),
       partialize: state => ({
         activeChallenge: state.activeChallenge,
         challengeHistory: state.challengeHistory,
