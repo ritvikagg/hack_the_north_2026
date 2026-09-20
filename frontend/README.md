@@ -36,17 +36,16 @@ This is a foreground prototype check. It does not measure distance, diagnose gai
 2. Use code **STRIDE**, or tap **Use demo invite: STRIDE**.
 3. Review the goal and shared stake, then **Join & pledge $5**.
 4. Your membership and pledge now appear in the pot.
-5. Vote to replace the goal, or open **Demo controls** and simulate the host starting.
+5. Wait for the host to start, or open **Hackathon controls** once the challenge is active.
 
 **Be the host**
 
 1. On Home, tap **Host a challenge**.
-2. Choose a difficulty and $5 / $10 / $20 CAD. Optionally choose your existing group.
-3. Tap **Generate & pledge**. The app generates a goal from the difficulty; you cannot set the run count or distance manually.
-4. Open **Demo controls → Add a demo friend**. Repeat to fill the pot.
-5. Try the replacement vote. Demo controls can simulate a friend's vote.
-6. Tap **Start the seven-day challenge**.
-7. Use **Simulate a verified run** to progress and **Fast-forward to results** to preview settlement.
+2. Enter your daily step goal and the number of days to hit it, then choose $5 / $10 / $20 CAD. Optionally choose your existing group.
+3. Tap **Create party**. The goal you set is exactly what everyone commits to.
+4. Share the invite code and wait for friends to join.
+5. Tap **Start the challenge**.
+6. Use **Simulate a completed day** to progress. Everyone who finishes all their days gets their full pledge back; unfinished pledges go to charity when the challenge ends.
 
 **Reset**
 
@@ -79,17 +78,17 @@ npm run typecheck
 npx expo export --platform all
 ```
 
-The tests cover joining, duplicate joins, hosting, generated goals, majority voting, run progress, settlement conservation, and resets.
+The tests cover joining, duplicate joins, hosting, chosen step goals, day progress, automatic settlement on completion, early-settle charity conservation, and resets.
 
 ## Backend integration
 
 - `src/domain/models.ts`: shared data shapes; money is integer CAD cents.
-- `src/services/demoFixtures.ts`: initial fake users, pots, and runs.
-- `src/services/demoEngine.ts`: pure local transitions and replaceable goal generator.
+- `src/services/demoFixtures.ts`: initial fake users, pots, and activity.
+- `src/services/demoEngine.ts`: pure local transitions mirroring the server rules.
 - `src/state/DemoProvider.tsx`: shared state and persistent async action boundary.
 - `src/app/`: Expo Router screens.
 - `src/components/ui.tsx`, `src/theme.ts`: shared visuals.
 
-Replace the provider's local transition/persistence call with the eventual API adapter. The server must own generated goals, authorization, accepted pledges, deadlines, votes, verified activity, and final settlement. Demo-only commands (add friend, simulate host/vote/run, fast-forward) must remain separate from real API operations.
+The server owns the chosen goals, authorization, accepted pledges, progress, and final settlement. Demo-only commands (add friend, simulate host start, simulate a completed day, end early) remain separate from real API operations.
 
-For this prototype, generation randomly combines run counts and distances within difficulty bands; these bands are demonstration settings, not final training recommendations. Odd-cent remainders go to finishers in participant order in the local demo. The final backend policy remains to be agreed.
+For this prototype, deposits are all-or-nothing: the full pledge returns only when every required day is complete, whenever that happens. Ending a challenge early sends unfinished pledges to charity. All money is simulated.

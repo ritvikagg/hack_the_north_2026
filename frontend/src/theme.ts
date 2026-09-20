@@ -10,11 +10,13 @@ export const fonts = { serif: Platform.select({ ios: 'Georgia', android: 'serif'
 export function money(minor: number) {
   return `$${(minor / 100).toLocaleString('en-CA', { minimumFractionDigits: minor % 100 ? 2 : 0, maximumFractionDigits: 2 })}`;
 }
-export function distance(meters: number) { return `${Number((meters / 1000).toFixed(2))} km`; }
-export function goalText(runs: number, meters: number) { return `${runs} runs · ${distance(meters)} minimum each`; }
+export function steps(count: number) { return `${count.toLocaleString('en-CA')} steps`; }
+export function goalText(dailyStepGoal: number, requiredDays: number) {
+  return `${steps(dailyStepGoal)} a day · ${requiredDays} day${requiredDays === 1 ? '' : 's'} to finish`;
+}
 export function timeLeft(endsAt: string | null) {
   if (!endsAt) return 'Ready when you are';
   const hours = Math.ceil((new Date(endsAt).getTime() - Date.now()) / 3_600_000);
-  return hours <= 0 ? 'Awaiting results' : hours < 24 ? `${hours}h left` : `${Math.ceil(hours / 24)} days left`;
+  return hours <= 0 ? 'Past the target date — every day still counts' : hours < 24 ? `${hours}h to target pace` : `${Math.ceil(hours / 24)} days to target pace`;
 }
 export function errorMessage(error: unknown) { return error instanceof Error ? error.message : 'Something went wrong. Please try again.'; }

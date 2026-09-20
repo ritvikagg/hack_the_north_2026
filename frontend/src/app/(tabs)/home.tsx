@@ -40,12 +40,12 @@ export default function Home() {
         onPress={() => router.push({ pathname: '/challenge/[id]', params: { id: challenge.id } })} style={{ marginBottom: 18 }}>
         <Surface dark={active} style={{ gap: 12 }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-            <AppText variant="label" color={active ? colors.lime : colors.muted}>{challenge.difficulty.toUpperCase()} · {challenge.mode === 'solo' ? 'SOLO' : challenge.hostId === currentUser.id ? 'PARTY · YOU HOST' : 'PARTY'}</AppText>
+            <AppText variant="label" color={active ? colors.lime : colors.muted}>{challenge.mode === 'solo' ? 'SOLO' : challenge.hostId === currentUser.id ? 'PARTY · YOU HOST' : 'PARTY'} · {challenge.requiredDays} DAYS</AppText>
             <Icon name="arrow-forward" color={active ? colors.lime : colors.forest} size={21} />
           </View>
           <AppText variant="title" color={active ? colors.cream : colors.ink} style={{ fontSize: 29, lineHeight: 36 }}>{challenge.title}.</AppText>
-          <AppText color={active ? '#D2DDCE' : colors.muted} variant="caption">{goalText(challenge.requiredRuns, challenge.minimumDistanceMeters)}</AppText>
-          {active ? <><AppText variant="number" color={colors.cream}>{me.verifiedRuns} / {challenge.requiredRuns}</AppText><ProgressDots completed={me.verifiedRuns} total={challenge.requiredRuns} dark /><AppText color={colors.lime} variant="caption">{timeLeft(challenge.endsAt)}</AppText></>
+          <AppText color={active ? '#D2DDCE' : colors.muted} variant="caption">{goalText(challenge.dailyStepGoal, challenge.requiredDays)}</AppText>
+          {active ? <><AppText variant="number" color={colors.cream}>{me.completedDays} / {challenge.requiredDays}</AppText><ProgressDots completed={me.completedDays} total={challenge.requiredDays} dark /><AppText color={colors.lime} variant="caption">{timeLeft(challenge.endsAt)}</AppText></>
             : <Badge label={challenge.status === 'lobby' ? 'Lobby · waiting to start' : 'Completed · ' + money(payout?.totalMinor ?? 0) + ' returned'} tone={challenge.status === 'lobby' ? 'peach' : 'green'} />}
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
             <AvatarStack users={friends} /><AppText color={active ? '#D2DDCE' : colors.muted} variant="caption">{money(challenge.pledgeMinor * friends.length)} pot · CAD</AppText>

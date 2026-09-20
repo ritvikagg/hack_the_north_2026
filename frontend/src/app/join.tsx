@@ -20,10 +20,10 @@ export default function JoinPot() {
     <Button label="Find party" loading={finding} disabled={busy || !code.trim()} onPress={() => void find()} />
     <ErrorNotice message={error} />
     {challenge && <Surface style={{ marginTop: 24, gap: 16 }}><Badge label={challenge.status === 'lobby' ? 'Open party' : challenge.status === 'active' ? 'In progress' : 'Completed'} />
-      <AppText variant="title">{challenge.title}</AppText><AppText>{goalText(challenge.requiredRuns, challenge.minimumDistanceMeters)}</AppText>
+      <AppText variant="title">{challenge.title}</AppText><AppText>{goalText(challenge.dailyStepGoal, challenge.requiredDays)}</AppText>
       <AppText>{challenge.participants.length} participants · {money(challenge.pledgeMinor)} per person</AppText>
       <AppText>Pot {joined ? 'now' : 'after you join'}: {money(challenge.pledgeMinor * (challenge.participants.length + (joined ? 0 : 1)))}</AppText>
-      <AppText variant="caption" color={colors.muted}>10% goes to charity; finishers split 90%. If nobody finishes, the whole pot goes to charity. All money is simulated.</AppText>
+      <AppText variant="caption" color={colors.muted}>Finish all {challenge.requiredDays} days to get your full pledge back. Unfinished pledges go to charity. All money is simulated.</AppText>
       <Button label={joined ? 'Open your challenge' : 'Join & pledge ' + money(challenge.pledgeMinor)} loading={busy} disabled={!joined && challenge.status !== 'lobby'} onPress={() => void join()} />
     </Surface>}
   </Screen>;
