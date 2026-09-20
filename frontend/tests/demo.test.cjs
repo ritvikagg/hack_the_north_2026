@@ -8,9 +8,9 @@ require.extensions['.ts'] = (module, filename) => {
   module._compile(ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2022 } }).outputText, filename);
 };
 const { createDemoState } = require('../src/services/demoFixtures.ts');
-const { transition, generateGoal, settlePayouts } = require('../src/services/demoEngine.ts');
+const { transition, settlePayouts } = require('../src/services/demoEngine.ts');
 const now = new Date('2026-09-19T15:00:00Z');
-const run = (state, action, random = () => .5) => transition(state, action, now, random);
+const run = (state, action) => transition(state, action, now);
 
 test('joining adds exactly one equal pledge; retries do not duplicate membership', () => {
   const initial = createDemoState(now);
@@ -24,19 +24,34 @@ test('joining adds exactly one equal pledge; retries do not duplicate membership
   assert.throws(() => run(initial, { type: 'join', code: 'WRONG' }), /No pot/);
 });
 
-test('host path generates a goal, adds friends, and starts exactly seven days', () => {
-  const created = run(createDemoState(now), { type: 'create', input: { difficulty: 'medium', pledgeMinor: 1000 } });
+test('create validates the chosen goal; solo starts immediately and party waits in the lobby', () => {
+  const input = { mode: 'solo', dailyStepGoal: 10000, requiredDays: 15, pledgeMinor: 500 };
+  assert.throws(() => run(createDemoState(now), { type: 'create', input: { ...input, dailyStepGoal: 500 } }), /step goal/);
+  assert.throws(() => run(createDemoState(now), { type: 'create', input: { ...input, requiredDays: 0 } }), /duration/);
+  assert.throws(() => run(createDemoState(now), { type: 'create', input: { ...input, pledgeMinor: 700 } }), /pledge/);
+  const solo = run(createDemoState(now), { type: 'create', input: { ...input, pledgeMinor: 1000 } });
+  const c = solo.state.challenges[0];
+  assert.equal(c.mode, 'solo');
+  assert.equal(c.status, 'active');
+  assert.equal(c.dailyStepGoal, 10000);
+  assert.equal(c.requiredDays, 15);
+  assert.equal(Date.parse(c.endsAt) - Date.parse(c.startsAt), 15 * 86400000);
+  const party = run(createDemoState(now), { type: 'create', input: { ...input, mode: 'party' } });
+  assert.equal(party.state.challenges[0].status, 'lobby');
+});
+
+test('host path adds friends and starts the chosen duration exactly once', () => {
+  const created = run(createDemoState(now), { type: 'create', input: { mode: 'party', dailyStepGoal: 8000, requiredDays: 10, pledgeMinor: 1000 } });
   let state = created.state;
   let c = state.challenges[0];
   assert.equal(c.hostId, state.currentUserId);
   assert.equal(c.participants.length, 1);
-  assert.equal(c.pledgeMinor, 1000);
   assert.throws(() => run(state, { type: 'start', id: c.id }), /at least one friend/);
   state = run(state, { type: 'addFriend', id: c.id }).state;
   state = run(state, { type: 'start', id: c.id }).state;
   c = state.challenges[0];
   assert.equal(c.status, 'active');
-  assert.equal(Date.parse(c.endsAt) - Date.parse(c.startsAt), 7 * 86400000);
+  assert.equal(Date.parse(c.endsAt) - Date.parse(c.startsAt), 10 * 86400000);
   assert.throws(() => run(state, { type: 'start', id: c.id }), /already started/);
   assert.throws(() => run(state, { type: 'addFriend', id: c.id }), /Joining is closed/);
 });
@@ -51,63 +66,54 @@ test('nonhost cannot start, but explicit demo host simulation can', () => {
   assert.throws(() => run(outsider, { type: 'join', code: 'STRIDE' }), /Joining is closed/);
 });
 
-test('votes require strict majority, count each member once, and replace only once', () => {
-  let { state, id } = run(createDemoState(now), { type: 'create', input: { difficulty: 'easy', pledgeMinor: 500 } });
-  state = run(state, { type: 'addFriend', id }).state;
-  state = run(state, { type: 'vote', id }).state;
-  assert.equal(state.challenges[0].replacementUsed, false);
-  state = run(state, { type: 'vote', id }).state;
-  assert.equal(state.challenges[0].replacementVotes.length, 1);
-  const goal = state.challenges[0];
-  state = run(state, { type: 'friendVote', id }).state;
-  assert.equal(state.challenges[0].replacementUsed, true);
-  assert.equal(state.challenges[0].difficulty, 'easy');
-  assert.notDeepEqual([state.challenges[0].requiredRuns, state.challenges[0].minimumDistanceMeters], [goal.requiredRuns, goal.minimumDistanceMeters]);
-  assert.throws(() => run(state, { type: 'vote', id }), /no longer available/);
-});
-
-test('generated goals vary within difficulty; replacement cannot repeat even with identical RNG', () => {
-  for (const difficulty of ['easy', 'medium', 'hard']) {
-    const low = generateGoal(difficulty, () => 0);
-    const high = generateGoal(difficulty, () => .99999);
-    assert.notDeepEqual(low, high);
-    const replacement = generateGoal(difficulty, () => 0, low);
-    assert.notEqual(replacement.minimumDistanceMeters, low.minimumDistanceMeters);
-  }
-});
-
-test('participant can add runs, reach the goal, and receive a conserving final payout', () => {
+test('days past the target date still count; the challenge stays open until all required days are done', () => {
   let state = createDemoState(now);
-  state = run(state, { type: 'addRun', id: 'weekly-stride' }).state;
-  assert.equal(state.challenges[0].participants[0].verifiedRuns, 3);
-  assert.equal(state.runs.filter((r) => r.userId === 'you').length, 3);
-  assert.throws(() => run(state, { type: 'addRun', id: 'weekly-stride' }), /already complete/);
-  state = run(state, { type: 'settle', id: 'weekly-stride' }).state;
-  const payouts = state.challenges[0].payouts;
-  assert.deepEqual(payouts.find((p) => p.userId === 'you'), { userId: 'you', pledgeReturnedMinor: 500, bonusMinor: 500, totalMinor: 1000 });
-  assert.equal(payouts.reduce((sum, p) => sum + p.totalMinor, 0), 2000);
-  assert.deepEqual(run(state, { type: 'settle', id: 'weekly-stride' }).state, state);
-  assert.throws(() => run(state, { type: 'addRun', id: 'weekly-stride' }), /no longer accepting/);
+  // Target pace date has passed, but a 15-day goal may take 20 calendar days.
+  state.challenges[0].endsAt = new Date(now.getTime() - 1).toISOString();
+  const before = state.challenges[0].participants[0].completedDays;
+  state = run(state, { type: 'addDay', id: 'weekly-stride' }).state;
+  assert.equal(state.challenges[0].participants[0].completedDays, before + 1);
+  assert.equal(state.challenges[0].status, 'active');
 });
 
-test('all-fail refunds, all-finish returns and cent remainders conserve the pot', () => {
+test('completing every required day settles automatically and returns the full deposit', () => {
+  let { state, id } = run(createDemoState(now), { type: 'create', input: { mode: 'solo', dailyStepGoal: 10000, requiredDays: 3, pledgeMinor: 1000 } });
+  for (let i = 0; i < 3; i++) state = run(state, { type: 'addDay', id }).state;
+  const c = state.challenges[0];
+  assert.equal(c.status, 'settled');
+  assert.deepEqual(c.payouts, [{ userId: 'you', pledgeReturnedMinor: 1000, totalMinor: 1000 }]);
+  assert.equal(c.charityMinor, 0);
+  assert.equal(state.runs.filter((r) => r.challengeId === id).length, 3);
+  assert.throws(() => run(state, { type: 'addDay', id }), /no longer accepting/);
+});
+
+test('ending early returns deposits only to finishers; the rest goes to charity', () => {
   const challenge = createDemoState(now).challenges[0];
   for (let winners = 0; winners <= 4; winners++) {
     const c = structuredClone(challenge);
-    c.participants.forEach((p, i) => { p.verifiedRuns = i < winners ? c.requiredRuns : 0; });
-    const payouts = settlePayouts(c);
-    assert.equal(payouts.reduce((sum, p) => sum + p.totalMinor, 0), 2000);
-    assert.ok(payouts.every((p) => Number.isInteger(p.totalMinor) && p.totalMinor >= 0));
-    if (winners === 0 || winners === 4) assert.ok(payouts.every((p) => p.totalMinor === 500));
-    if (winners === 3) assert.deepEqual(payouts.map((p) => p.totalMinor), [667, 667, 666, 0]);
+    c.participants.forEach((p, i) => { p.completedDays = i < winners ? c.requiredDays : 0; });
+    const { payouts, charityMinor } = settlePayouts(c);
+    assert.equal(payouts.reduce((sum, p) => sum + p.totalMinor, 0) + charityMinor, 2000);
+    assert.equal(charityMinor, (4 - winners) * 500);
+    assert.ok(payouts.every((p, i) => p.totalMinor === (i < winners ? 500 : 0) && p.pledgeReturnedMinor === p.totalMinor));
   }
 });
 
-test('expired active challenge rejects activity and reset restores invitations', () => {
+test('only the host settles early; settling twice changes nothing', () => {
   const state = createDemoState(now);
-  state.challenges[0].endsAt = new Date(now.getTime() - 1).toISOString();
-  assert.throws(() => run(state, { type: 'addRun', id: 'weekly-stride' }), /no longer accepting/);
-  const reset = run(state, { type: 'reset' }).state;
+  const asFriend = structuredClone(state);
+  asFriend.currentUserId = 'maya';
+  assert.throws(() => run(asFriend, { type: 'settle', id: 'weekly-stride' }), /host/);
+  const settled = run(state, { type: 'settle', id: 'weekly-stride' }).state;
+  const c = settled.challenges[0];
+  assert.equal(c.status, 'settled');
+  assert.equal(c.charityMinor, 2000);
+  assert.equal(c.payouts.find((p) => p.userId === 'you').totalMinor, 0);
+  assert.deepEqual(run(settled, { type: 'settle', id: 'weekly-stride' }).state, settled);
+});
+
+test('reset restores the initial invitations', () => {
+  const reset = run(createDemoState(now), { type: 'reset' }).state;
   assert.equal(reset.challenges.length, 2);
   assert.equal(reset.challenges[1].participants.some((p) => p.userId === 'you'), false);
 });

@@ -40,7 +40,7 @@ export default function VerifyWalk() {
     setError(null);
     try {
       // The server owns challenge progress; this action is available only after on-device verification.
-      await dispatch({ type: 'addRun', id });
+      await dispatch({ type: 'addDay', id });
       router.back();
     } catch (cause) { setError(errorMessage(cause)); }
   }
@@ -64,7 +64,7 @@ export default function VerifyWalk() {
     {!recording && !result && <Button label="Start walking check" icon="play-outline" onPress={() => void start()} />}
     {recording && <Button label="Stop and check" icon="stop-outline" onPress={() => void stop()} />}
     {result && <View style={{ gap: 10 }}>
-      {result.verified ? <Button label="Record verified challenge run" icon="checkmark" loading={busy} onPress={() => void saveVerifiedWalk()} /> : <Button label="Try another walk" icon="refresh-outline" onPress={() => void start()} />}
+      {result.verified ? <Button label="Record verified challenge day" icon="checkmark" loading={busy} onPress={() => void saveVerifiedWalk()} /> : <Button label="Try another walk" icon="refresh-outline" onPress={() => void start()} />}
       <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
     </View>}
     <Surface style={{ marginTop: 22, gap: 8 }}>

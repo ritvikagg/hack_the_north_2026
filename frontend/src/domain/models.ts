@@ -1,4 +1,3 @@
-export type Difficulty = 'easy' | 'medium' | 'hard';
 export type PledgeMinor = 500 | 1000 | 2000;
 export type ChallengeStatus = 'lobby' | 'active' | 'settled';
 
@@ -11,13 +10,12 @@ export interface User {
 
 export interface Participant {
   userId: string;
-  verifiedRuns: number;
+  completedDays: number;
 }
 
 export interface Payout {
   userId: string;
   pledgeReturnedMinor: number;
-  bonusMinor: number;
   totalMinor: number;
 }
 
@@ -26,9 +24,8 @@ export interface Challenge {
   charityMinor?: number;
   id: string;
   title: string;
-  difficulty: Difficulty;
-  requiredRuns: number;
-  minimumDistanceMeters: number;
+  dailyStepGoal: number;
+  requiredDays: number;
   pledgeMinor: PledgeMinor;
   currency: 'CAD';
   hostId: string;
@@ -39,8 +36,6 @@ export interface Challenge {
   endsAt: string | null;
   inviteCode: string;
   participants: Participant[];
-  replacementUsed: boolean;
-  replacementVotes: string[];
   payouts: Payout[];
 }
 
@@ -48,8 +43,7 @@ export interface Run {
   id: string;
   challengeId: string;
   userId: string;
-  distanceMeters: number;
-  durationSeconds: number;
+  steps: number;
   completedAt: string;
   verification: 'verified' | 'pending' | 'rejected';
   countsTowardGoal: boolean;
@@ -83,7 +77,8 @@ export interface DemoState {
 
 export interface CreateChallengeInput {
   mode?: 'solo' | 'party';
-  difficulty: Difficulty;
+  dailyStepGoal: number;
+  requiredDays: number;
   pledgeMinor: PledgeMinor;
   groupId?: string;
 }
@@ -94,9 +89,8 @@ export interface PledgefitActions {
   joinChallenge(code: string): Promise<string>;
   createGroup(name: string): Promise<string>;
   joinGroup(code: string): Promise<string>;
-  voteReplace(challengeId: string): Promise<void>;
   startChallenge(challengeId: string): Promise<void>;
-  addDemoRun(challengeId: string): Promise<void>;
+  addDemoDay(challengeId: string): Promise<void>;
   addDemoFriend(challengeId: string): Promise<void>;
   settleDemoChallenge(challengeId: string): Promise<void>;
   resetDemo(): Promise<void>;

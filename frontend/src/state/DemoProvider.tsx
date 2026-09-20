@@ -61,7 +61,7 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     if (locked.current) throw new Error('Please wait for the current action.');
     locked.current = true; setBusy(true);
     try {
-      const payload = action.type === 'addRun' ? { ...action, requestId: `${userId.current}-${Date.now()}-${Math.random().toString(36).slice(2)}` } : action;
+      const payload = action.type === 'addDay' ? { ...action, requestId: `${userId.current}-${Date.now()}-${Math.random().toString(36).slice(2)}` } : action;
       const { data, error } = await backend.rpc('fitness_action', { p_action: payload });
       if (error) throw new Error(backendError(error));
       await refresh(); return data as string;
