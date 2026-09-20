@@ -1,101 +1,24 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Accelerometer, Gyroscope, Pedometer } from 'expo-sensors';
 
-type Subscription = { remove(): void };
-
-export type GaitVerification = {
-  verified: boolean;
-  reason: string;
-  durationSeconds: number;
-  steps: number;
-  sampleCount: number;
-  sampleRateHz: number;
-  cadenceSpm: number;
-  accelerationVariationG: number;
-  rotationEnergy: number;
-};
-
-type ActiveSession = {
-  startedAt: number;
-  accelerations: number[];
-  gyroscopeMagnitudes: number[];
-  steps: number;
-  subscriptions: Subscription[];
-};
-
-let active: ActiveSession | null = null;
-
-const magnitude = (x: number, y: number, z: number) => Math.sqrt(x * x + y * y + z * z);
-const mean = (values: number[]) => values.reduce((total, value) => total + value, 0) / Math.max(values.length, 1);
-const standardDeviation = (values: number[]) => {
-  const average = mean(values);
-  return Math.sqrt(mean(values.map((value) => (value - average) ** 2)));
-};
-
-/**
- * Starts an in-app, foreground-only gait check. The native collector is still
- * the path for screen-off/raw CSV collection; Expo Go does not keep this stream
- * alive in the background.
- */
-export async function startGaitVerification(): Promise<void> {
-  if (active) throw new Error('A walking check is already running.');
-  const [accelerometerAvailable, gyroscopeAvailable, pedometerAvailable] = await Promise.all([
-    Accelerometer.isAvailableAsync(),
-    Gyroscope.isAvailableAsync(),
-    Pedometer.isAvailableAsync(),
-  ]);
-  if (!accelerometerAvailable || !gyroscopeAvailable || !pedometerAvailable) {
-    throw new Error('This phone needs an accelerometer, gyroscope, and step sensor for a verified walk.');
-  }
-  const permission = await Pedometer.requestPermissionsAsync();
-  if (!permission.granted) throw new Error('Allow Physical activity permission to verify a walk.');
-
-  Accelerometer.setUpdateInterval(50);
-  Gyroscope.setUpdateInterval(50);
-  const session: ActiveSession = { startedAt: Date.now(), accelerations: [], gyroscopeMagnitudes: [], steps: 0, subscriptions: [] };
-  try {
-    session.subscriptions.push(
-      Accelerometer.addListener(({ x, y, z }) => {
-        if (session.accelerations.length < 18_000) session.accelerations.push(magnitude(x, y, z));
-      }),
-      Gyroscope.addListener(({ x, y, z }) => {
-        if (session.gyroscopeMagnitudes.length < 18_000) session.gyroscopeMagnitudes.push(magnitude(x, y, z));
-      }),
-      Pedometer.watchStepCount(({ steps }) => { session.steps = Math.max(session.steps, steps); }),
-    );
-    active = session;
-  } catch (error) {
-    session.subscriptions.forEach((subscription) => subscription.remove());
-    throw error;
-  }
-}
-
-export function cancelGaitVerification(): void {
-  active?.subscriptions.forEach((subscription) => subscription.remove());
-  active = null;
-}
-
-export function stopGaitVerification(): GaitVerification {
-  const session = active;
-  if (!session) throw new Error('Start a walking check first.');
-  cancelGaitVerification();
-
-  const durationSeconds = Math.max(0, (Date.now() - session.startedAt) / 1000);
-  const sampleCount = session.accelerations.length;
-  const sampleRateHz = sampleCount / Math.max(durationSeconds, 1);
-  const accelerationVariationG = standardDeviation(session.accelerations);
-  const rotationEnergy = mean(session.gyroscopeMagnitudes);
-  const cadenceSpm = session.steps / Math.max(durationSeconds, 1) * 60;
-  const verified = durationSeconds >= 10
-    && session.steps >= 8
-    && sampleCount >= 120
-    && sampleRateHz >= 12
-    && accelerationVariationG >= 0.07
-    && rotationEnergy >= 0.03;
-  const reason = verified
-    ? 'Step, acceleration, and rotation signals agree with an active walk.'
-    : durationSeconds < 10 ? 'Walk for at least 10 seconds before stopping.'
-      : session.steps < 8 ? 'Not enough detected steps. Keep the phone in your pocket and walk naturally.'
-        : sampleRateHz < 12 ? 'The motion sensor stream was too sparse. Try again with the app open.'
-          : 'The motion signal was too still for a walking check. Try another short walk.';
-  return { verified, reason, durationSeconds, steps: session.steps, sampleCount, sampleRateHz, cadenceSpm, accelerationVariationG, rotationEnergy };
-}
+type Sub = { remove(): void };
+type Point = { latitude: number; longitude: number; accuracy: number | null };
+type Mode = 'enrollment' | 'verification';
+export type GaitVerification = { verified: boolean; walkSignalsVerified: boolean; reason: string; durationSeconds: number; steps: number; sampleCount: number; sampleRateHz: number; cadenceSpm: number; accelerationVariationG: number; rotationEnergy: number; heelStrikeCount: number; stepRegularity: number; impactRotationCoupling: number; vibrationRatio: number; displacementMeters: number; pathMeters: number; locationSampleCount: number; baselineSessions: number; baselineSimilarity: number | null };
+type Baseline = Pick<GaitVerification, 'cadenceSpm' | 'accelerationVariationG' | 'rotationEnergy' | 'stepRegularity' | 'impactRotationCoupling' | 'vibrationRatio'>;
+type Session = { startedAt: number; mode: Mode; acc: number[]; gyro: number[]; steps: number; points: Point[]; subscriptions: Sub[]; location?: Sub };
+const KEY = 'pledgefit.gait-baseline.v1'; let active: Session | null = null;
+const mag = (x: number, y: number, z: number) => Math.hypot(x, y, z);
+const avg = (v: number[]) => v.reduce((a, b) => a + b, 0) / Math.max(1, v.length);
+const sd = (v: number[]) => Math.sqrt(avg(v.map((x) => (x - avg(v)) ** 2)));
+const med = (v: number[]) => [...v].sort((a, b) => a - b)[Math.floor(v.length / 2)] ?? 0;
+function metres(a: Point, b: Point) { const r = Math.PI / 180, x = (b.latitude - a.latitude) * r, y = (b.longitude - a.longitude) * r, h = Math.sin(x / 2) ** 2 + Math.cos(a.latitude * r) * Math.cos(b.latitude * r) * Math.sin(y / 2) ** 2; return 12_742_000 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h)); }
+function strikes(v: number[], hz: number) { const threshold = avg(v) + sd(v) * .9, gap = Math.max(4, Math.floor(hz * .28)), peaks: number[] = []; for (let i = 1; i < v.length - 1; i++) if (v[i] > threshold && v[i] > v[i - 1] && v[i] >= v[i + 1] && (!peaks.length || i - peaks[peaks.length - 1] >= gap)) peaks.push(i); const gaps = peaks.slice(1).map((p, i) => (p - peaks[i]) / Math.max(hz, 1)); return { peaks, regularity: gaps.length >= 3 ? Math.max(0, 1 - sd(gaps) / Math.max(avg(gaps), .01)) : 0 }; }
+function vibration(v: number[]) { return v.length < 8 ? 9 : avg(v.slice(1).map((x, i) => Math.abs(x - v[i]))) / Math.max(sd(v), .001); }
+async function baselines(): Promise<Baseline[]> { try { const x = await AsyncStorage.getItem(KEY); const b = x ? JSON.parse(x) : []; return Array.isArray(b) ? b : []; } catch { return []; } }
+export async function gaitBaselineSessions() { return (await baselines()).length; }
+export async function enrollGaitBaseline(r: GaitVerification) { if (!r.walkSignalsVerified) throw new Error('Only a displacement-confirmed walk can be enrolled.'); const b = await baselines(); const next: Baseline = { cadenceSpm: r.cadenceSpm, accelerationVariationG: r.accelerationVariationG, rotationEnergy: r.rotationEnergy, stepRegularity: r.stepRegularity, impactRotationCoupling: r.impactRotationCoupling, vibrationRatio: r.vibrationRatio }; await AsyncStorage.setItem(KEY, JSON.stringify([...b, next].slice(-4))); return Math.min(b.length + 1, 4); }
+function similarity(r: GaitVerification, b: Baseline[]) { if (!b.length) return null; const fields: (keyof Baseline)[] = ['cadenceSpm', 'accelerationVariationG', 'rotationEnergy', 'stepRegularity', 'impactRotationCoupling', 'vibrationRatio']; return Math.max(0, 1 - avg(fields.map((f) => Math.min(1, Math.abs(r[f] - med(b.map((x) => x[f]))) / Math.max(Math.abs(med(b.map((x) => x[f]))), f === 'stepRegularity' ? .2 : .05))))); }
+export async function startGaitVerification(mode: Mode = 'verification') { if (active) throw new Error('A walking check is already running.'); const [a, g, p] = await Promise.all([Accelerometer.isAvailableAsync(), Gyroscope.isAvailableAsync(), Pedometer.isAvailableAsync()]); if (!a || !g || !p) throw new Error('This phone needs an accelerometer, gyroscope, and step sensor.'); const activity = await Pedometer.requestPermissionsAsync(); if (!activity.granted) throw new Error('Allow Physical activity permission to verify a walk.'); Accelerometer.setUpdateInterval(50); Gyroscope.setUpdateInterval(50); const s: Session = { startedAt: Date.now(), mode, acc: [], gyro: [], steps: 0, points: [], subscriptions: [] }; try { s.subscriptions.push(Accelerometer.addListener(({ x, y, z }) => { if (s.acc.length < 18000) s.acc.push(mag(x, y, z)); }), Gyroscope.addListener(({ x, y, z }) => { if (s.gyro.length < 18000) s.gyro.push(mag(x, y, z)); }), Pedometer.watchStepCount(({ steps }) => { s.steps = Math.max(s.steps, steps); })); active = s; } catch (e) { s.subscriptions.forEach((x) => x.remove()); throw e; } }
+export function cancelGaitVerification() { active?.subscriptions.forEach((x) => x.remove()); active?.location?.remove(); active = null; }
+export async function stopGaitVerification(): Promise<GaitVerification> { const s = active; if (!s) throw new Error('Start a walking check first.'); cancelGaitVerification(); const seconds = (Date.now() - s.startedAt) / 1000, count = s.acc.length, hz = count / Math.max(seconds, 1), accel = sd(s.acc), rotation = avg(s.gyro), cadence = s.steps / Math.max(seconds, 1) * 60, heel = strikes(s.acc, hz), coupling = heel.peaks.length ? avg(heel.peaks.map((i) => s.gyro[i] ?? 0)) / Math.max(rotation, .001) : 0, shake = vibration(s.acc); const mechanicsSignals = [accel >= .035, heel.peaks.length >= 6, heel.regularity >= .22, coupling >= .08, shake <= 4.5].filter(Boolean).length; const motionOk = seconds >= 12 && s.steps >= 10 && hz >= 10 && mechanicsSignals >= 4, b = await baselines(); const base = { verified: false, walkSignalsVerified: motionOk, reason: '', durationSeconds: seconds, steps: s.steps, sampleCount: count, sampleRateHz: hz, cadenceSpm: cadence, accelerationVariationG: accel, rotationEnergy: rotation, heelStrikeCount: heel.peaks.length, stepRegularity: heel.regularity, impactRotationCoupling: coupling, vibrationRatio: shake, displacementMeters: 0, pathMeters: 0, locationSampleCount: 0, baselineSessions: b.length, baselineSimilarity: null }; const score = similarity(base, b), baselineOk = s.mode === 'enrollment' || (b.length >= 2 && (score ?? 0) >= .52); let reason = 'Gait mechanics and enrolled baseline agree.'; if (!motionOk) reason = seconds < 12 ? 'Walk for at least 12 seconds.' : 'We could not collect enough consistent walking signals. Keep the phone in the same pocket and try a natural walk.'; else if (s.mode !== 'enrollment' && b.length < 2) reason = 'Complete two enrolled baseline walks before a challenge walk can count.'; else if (!baselineOk) reason = 'This walk differs from your enrolled baseline. Try the same pocket and a natural pace.'; return { ...base, verified: motionOk && baselineOk, reason, baselineSimilarity: score }; }
