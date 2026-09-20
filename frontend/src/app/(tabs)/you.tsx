@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { AppText, Avatar, Badge, Button, Divider, ErrorNotice, PageHeader, Screen, Surface } from '../../components/ui';
 import { colors, distance, errorMessage, money } from '../../theme';
 import { useDemo } from '../../state/DemoProvider';
