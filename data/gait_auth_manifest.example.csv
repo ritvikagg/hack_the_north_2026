@@ -1,0 +1,6 @@
+path,subject_id,activity,recording_id
+raw/gait_sessions/replace_with_owner_long_walk.csv,owner,walk,owner_day1_long
+raw/gait_sessions/replace_with_owner_seated_legs.csv,owner,seated_legs,owner_spoof1
+raw/gait_sessions/replace_with_owner_walk_in_place.csv,owner,walk_in_place,owner_spoof2
+raw/gait_sessions/replace_with_owner_phone_shake.csv,owner,phone_shake,owner_spoof3
+raw/gait_sessions/replace_with_friend_walk.csv,friend_1,walk,friend1_day1
