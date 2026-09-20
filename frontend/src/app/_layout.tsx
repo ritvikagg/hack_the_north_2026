@@ -23,6 +23,7 @@ function AppLayout() {
         <Stack.Screen name="challenge/[id]" />
         <Stack.Screen name="challenge/[id]/verify" options={{ presentation: 'modal' }} />
         <Stack.Screen name="group/[id]" />
+        <Stack.Screen name="group/scan" options={{ presentation: 'modal' }} />
         <Stack.Screen name="join" />
         <Stack.Screen name="create" />
         <Stack.Screen name="gait-enrollment" options={{ presentation: 'modal' }} />

@@ -8,12 +8,14 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.anonymous.pledgefit"
     },
     "android": {
       "permissions": [
         "android.permission.ACTIVITY_RECOGNITION",
-        "android.permission.HIGH_SAMPLING_RATE_SENSORS"
+        "android.permission.HIGH_SAMPLING_RATE_SENSORS",
+        "android.permission.CAMERA"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#F6F4E9",
@@ -31,6 +33,14 @@
     "plugins": [
       "expo-router",
       "expo-asset",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow Pledgefit to scan group invitation QR codes",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
       "onnxruntime-react-native",
       "./plugins/withShortCmakePath"
     ],
