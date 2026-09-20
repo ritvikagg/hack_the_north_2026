@@ -22,6 +22,8 @@ export interface Payout {
 }
 
 export interface Challenge {
+  mode?: 'solo' | 'party';
+  charityMinor?: number;
   id: string;
   title: string;
   difficulty: Difficulty;
@@ -80,6 +82,7 @@ export interface DemoState {
 }
 
 export interface CreateChallengeInput {
+  mode?: 'solo' | 'party';
   difficulty: Difficulty;
   pledgeMinor: PledgeMinor;
   groupId?: string;

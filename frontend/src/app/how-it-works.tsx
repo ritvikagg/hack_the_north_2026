@@ -1,15 +1,9 @@
-import { View } from 'react-native';
-import { AppText, Badge, Divider, Icon, PageHeader, Screen, Surface } from '../components/ui';
+import { AppText, Badge, PageHeader, Screen, Surface } from '../components/ui';
 import { colors } from '../theme';
-
 export default function HowItWorks() {
-  return <Screen><PageHeader back title="A promise with a little extra." eyebrow="How pledgefit works" />
-    {[
-      { number: '01', title: 'Pledge together.', text: 'Everyone commits the same amount: $5, $10, or $20 CAD. Together, your pledges make the pot.' },
-      { number: '02', title: 'Show up for your goal.', text: 'The app generates a weekly running challenge at your chosen difficulty. Your group can vote for one replacement before it starts.' },
-      { number: '03', title: 'Finish. Get rewarded.', text: 'Finishers receive their own pledge back and split the missed pledges equally. If everyone misses, everyone gets a refund.' },
-    ].map((step) => <View key={step.number} style={{ flexDirection: 'row', gap: 16, marginBottom: 28 }}><AppText variant="label" color={colors.muted} style={{ marginTop: 6 }}>{step.number}</AppText><View style={{ flex: 1, gap: 9 }}><AppText style={{ fontSize: 21, fontWeight: '600' }}>{step.title}</AppText><AppText color={colors.muted}>{step.text}</AppText></View></View>)}
-    <Surface dark><View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}><Icon name="sparkles-outline" color={colors.lime} /><AppText variant="label" color={colors.lime}>AN EXAMPLE</AppText></View><AppText color={colors.cream} variant="title" style={{ marginVertical: 14 }}>4 friends. $20 pot.</AppText><AppText color="#D2DDCE">Each person pledges $5. Two people finish. Each finisher receives $10: their $5 pledge back, plus a $5 bonus.</AppText></Surface>
-    <Divider /><Badge label="Demo only" tone="neutral" /><AppText variant="caption" color={colors.muted} style={{ marginTop: 12 }}>All money and activity shown in this prototype are simulated. No payment is collected.</AppText>
+  return <Screen><PageHeader back title="A promise worth keeping." eyebrow="How it works" />
+    <Surface style={{ gap: 12, marginBottom: 20 }}><Badge label="Solo" /><AppText variant="title">Your pace. Your promise.</AppText><AppText>Pick a difficulty and deposit $5, $10, or $20. Your seven-day challenge starts immediately.</AppText><AppText>Earn your deposit back in proportion to the runs you complete. The unearned portion goes to charity.</AppText><AppText color={colors.muted}>Example: a $10 deposit and 2 of 3 runs completed returns $6.66 to you and allocates $3.34 to charity. Complete all runs to receive the full $10.</AppText></Surface>
+    <Surface style={{ gap: 12, marginBottom: 20 }}><Badge label="Party" /><AppText variant="title">A little farther, together.</AppText><AppText>Everyone pledges the same amount. Share your invite code; the host starts the week after at least one friend joins.</AppText><AppText>10% of the entire pot goes to charity. People who complete the goal split the remaining 90% equally. If nobody finishes, the entire pot goes to charity.</AppText><AppText color={colors.muted}>Example: four $5 pledges create a $20 pot. $2 goes to charity. If two people finish, they each receive $9. Odd cents go in joining order.</AppText></Surface>
+    <Surface style={{ gap: 12 }}><Badge label="Hackathon preview" tone="peach" /><AppText>Accounts, invites, votes, progress and results sync through the local server. Keep your phones and the computer running Docker on the same Wi-Fi.</AppText><AppText>Real walk verification is coming soon. Use Simulate a completed run to test progress. Hosts can fast-forward results after confirming; otherwise results settle when someone opens the app after the deadline.</AppText><AppText>No actual payment is collected or charity donation transferred. Money and activity are simulated.</AppText></Surface>
   </Screen>;
 }

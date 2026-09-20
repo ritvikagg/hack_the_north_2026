@@ -1,5 +1,27 @@
 # Unnamed — hackathon MVP starter (Android)
 
+## Run the current party demo
+
+This repository contains two separate Expo apps. The root app is the original
+scaffold (its deposit screen is still a placeholder). The more complete
+Pledgefit party demo lives in `frontend/`.
+
+From this repository root in PowerShell:
+
+```powershell
+npm.cmd --prefix frontend ci
+npm.cmd run demo
+```
+
+The demo uses port **8082**, so it can run alongside the root scaffold on 8081.
+Open http://localhost:8082 for the browser demo, or scan the terminal QR code
+with Expo Go on a phone on the same Wi-Fi. Docker runs Supabase separately;
+starting Docker does not start Expo. This frontend uses local simulated data
+and does not require Docker or Supabase.
+
+See `reports/hackathon-readiness-2026-09-20.md` for tested flows and remaining
+product gaps, including solo mode and charity payouts.
+
 Hour 0–1 output: scaffold, shared types, design tokens, and stub screens so
 all three of you can build in parallel starting hour 1.
 
