@@ -5,6 +5,7 @@ export type DemoAction =
   | { type: 'create'; input: CreateChallengeInput }
   | { type: 'join'; code: string }
   | { type: 'vote' | 'start' | 'addFriend' | 'friendVote' | 'demoHostStart' | 'addRun' | 'settle'; id: string }
+  | { type: 'recordGaitRun'; id: string; gait: { steps: number; sampleCount: number; cadenceSpm: number; reason: string; durationSeconds: number } }
   | { type: 'reset' };
 
 function requireRule(condition: unknown, message: string): asserts condition {
@@ -102,7 +103,17 @@ export function transition(previous: DemoState, action: DemoAction, now = new Da
       member.verifiedRuns++;
       state.runs.unshift({ id: `run-${now.getTime()}-${state.runs.length}`, challengeId: challenge.id, userId: me,
         distanceMeters: challenge.minimumDistanceMeters + 100, durationSeconds: Math.round(challenge.minimumDistanceMeters * .42),
-        completedAt: now.toISOString(), verification: 'verified', countsTowardGoal: true });
+        completedAt: now.toISOString(), verification: 'verified', countsTowardGoal: true, source: 'demo' });
+      break;
+    }
+    case 'recordGaitRun': {
+      requireRule(challenge.status === 'active' && new Date(challenge.endsAt!).getTime() > now.getTime(), 'The challenge is no longer accepting runs.');
+      requireRule(member.verifiedRuns < challenge.requiredRuns, 'Your goal is already complete.');
+      member.verifiedRuns++;
+      state.runs.unshift({ id: `run-${now.getTime()}-${state.runs.length}`, challengeId: challenge.id, userId: me,
+        distanceMeters: 0, durationSeconds: Math.max(1, Math.round(action.gait.durationSeconds)), completedAt: now.toISOString(),
+        verification: 'verified', countsTowardGoal: true, source: 'gait_sensor',
+        gait: { steps: action.gait.steps, sampleCount: action.gait.sampleCount, cadenceSpm: action.gait.cadenceSpm, reason: action.gait.reason } });
       break;
     }
     case 'settle': {

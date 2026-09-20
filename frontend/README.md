@@ -22,6 +22,14 @@ On Windows PowerShell, use `npm.cmd ci` and `npm.cmd start` if PowerShell blocks
 
 ## Demo walkthrough
 
+**Verify a walk with gait signals**
+
+1. Open an active challenge and select **Verify a walk**.
+2. Allow Android's **Physical activity** permission, keep the app open, and walk naturally for at least 10 seconds with the phone in your pocket.
+3. Tap **Stop and check**. The demo counts the run only when step, acceleration, and gyroscope signals agree.
+
+This is a foreground prototype check. It does not measure distance, diagnose gait, or identify a person. For raw, screen-off CSV collection, use `../native-collector/` from the repository root.
+
 **Join a pot**
 
 1. Tap **Let's get moving**, then **Join a pot**.

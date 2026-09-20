@@ -51,6 +51,13 @@ export interface Run {
   completedAt: string;
   verification: 'verified' | 'pending' | 'rejected';
   countsTowardGoal: boolean;
+  source?: 'demo' | 'gait_sensor';
+  gait?: {
+    steps: number;
+    sampleCount: number;
+    cadenceSpm: number;
+    reason: string;
+  };
 }
 
 export interface Group {

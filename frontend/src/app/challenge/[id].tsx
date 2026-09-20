@@ -93,6 +93,14 @@ export default function ChallengeDetail() {
       </View>) : <AppText color={colors.muted} style={{ paddingVertical: 15 }}>Your first run is ahead of you.</AppText>)}
     </>}
     {me && !settled && <>
+      {!lobby && <>
+        <Divider />
+        <Surface style={{ gap: 12 }}>
+          <AppText style={{ fontWeight: '600', fontSize: 18 }}>Verify a real walk</AppText>
+          <AppText variant="caption" color={colors.muted}>Use the phone's step, acceleration, and rotation signals to record a short verified walk.</AppText>
+          <Button label="Verify a walk" icon="walk-outline" disabled={busy || goalMet} onPress={() => router.push({ pathname: '/challenge/[id]/verify', params: { id } })} />
+        </Surface>
+      </>}
       <Divider /><Pressable accessibilityRole="button" accessibilityState={{ expanded: showDemo }} onPress={() => setShowDemo(!showDemo)} style={{ flexDirection: 'row', justifyContent: 'space-between', minHeight: 48, alignItems: 'center' }}>
         <AppText style={{ fontWeight: '600' }}>Demo controls</AppText><Icon name={showDemo ? 'chevron-up' : 'chevron-down'} size={20} />
       </Pressable>
