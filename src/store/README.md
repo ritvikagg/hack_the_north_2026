@@ -1,23 +1,93 @@
-# Persisted state and challenge engine
+# `src/store/` — app state & challenge engine
 
-`useAppStore` owns phone workout history and the separate walking wallet. `useChallengeStore` owns the personal 15–30 day step pledge and completed history. Social pots use `src/state/DemoProvider.tsx`. These are local stores, not a server.
+This folder holds the app's client-side state (zustand + AsyncStorage
+persistence — no backend for the demo).
 
-The root app waits for both Zustand stores to hydrate before rendering actionable screens. Read failures have a retry screen; write failures show a save warning and retain queued writes for retry. Keys from the original app are retained.
+## What's here
 
-## Personal steps
+| File | Purpose |
+|---|---|
+| `useAppStore.ts` | Existing user/deposit/workout store (Person 3). |
+| `challengeEngine.ts` | Pure challenge logic — no side effects, no storage. |
+| `useChallengeStore.ts` | Persisted zustand store wrapping the engine. |
+| `seedData.ts` | Sample `Challenge` objects for UI dev (`SEED_CHALLENGE_*`). |
+| `DEMO.md` | On-stage demo checklist (reset → fast-forward → live final day). |
+| `*.test.ts` | Jest tests (`npm test`). |
+| `README.md` | This file. |
 
-Call `startChallenge(depositAmount, totalDays, dailyThreshold)` to create a pledge. Values are CAD dollars, whole days (15–30), and whole steps. The engine splits the deposit in cents, with remainder cents on the last day.
+## Challenge engine (`feature/challenge-engine`)
 
-The workout screen creates a `WorkoutEvent` with a unique capture id, start/end times, source, gait analysis, and the active personal challenge id at the beginning of the recording. `useAppStore.logWorkout(event)` records it once and computes wallet unlocks internally. It no longer accepts caller-provided unlock amounts or streaks.
+The savings-commitment challenge: a user deposits money, commits to a
+daily step goal for 15–30 days, and forfeits one day's slice of the
+deposit (`depositAmount / totalDays`) for each missed day. Hit every
+day and the full deposit is refunded.
 
-Then call `useChallengeStore.getState().syncWorkouts(useAppStore.getState().workouts)`. The runtime also replays reconciliation after hydration, on foregrounding, every 30 seconds, and after saved activity changes. This recovers if the process stops between the two store writes.
+Shared types live in `src/types/challenge.ts` — import them as:
 
-Only pedometer-sourced, gait-verified sessions matching the challenge id and a single UTC date count. Duplicate ids, old sessions, debug inputs and unverified sessions cannot earn credit. A pending day stays pending below its goal until UTC midnight; elapsed pending days resolve as missed. Reaching the goal resolves a hit. Completed pledges move into history once. Resolved outcomes cannot be rewritten.
+```ts
+import { Challenge, DayRecord, ChallengeSummary } from '@/types/challenge';
+```
 
-`recordDayResult` remains the explicit low-level engine wrapper for scripted outcomes; the phone flow uses `syncWorkouts` to avoid marking an unfinished day missed prematurely. `devFastForward` is available only in development and is exposed under clearly marked demo controls in the step screen. `resetDemo` clears the personal challenge and history.
+- `Challenge` — one active/finished commitment, with a `DayRecord` per day.
+- `DayRecord` — a single day's outcome (`pending` / `hit` / `missed`) and its stake.
+- `ChallengeSummary` — derived rollup for UI (forfeited, refundable, streak, etc.).
 
-## Wallet and other features
+## Using the store (`useChallengeStore.ts`)
 
-The walking wallet applies only the highest matching `UNLOCK_RULES` tier to its own remaining balance once per unique validated session. Its money never comes from a social pot or daily pledge. `reset` clears wallet balances and workout history. The UI requires confirmation before resetting those stores together.
+State: `activeChallenge: Challenge | null`, `challengeHistory: Challenge[]`.
+Both are persisted to AsyncStorage, so a challenge survives app restarts.
 
-`seedData.ts` remains available for UI tests and fixtures, but the personal challenge UI reads the actual store. `DEMO.md` describes the original scripted engine demo; the root README covers the unified app's phone walkthrough.
+### Start a challenge (UI teammate)
+
+```tsx
+import { useChallengeStore } from '@/store/useChallengeStore';
+
+function DepositScreen() {
+  const startChallenge = useChallengeStore(s => s.startChallenge);
+
+  const onConfirm = () => {
+    // $50 deposit, 15 days, 5,000 steps/day.
+    // Throws if a challenge is already active, or on bad input —
+    // wrap in try/catch to show a message.
+    startChallenge(50, 15, 5000);
+  };
+  // ...
+}
+```
+
+### Read challenge state
+
+```tsx
+const challenge = useChallengeStore(s => s.activeChallenge);
+const summary = useChallengeStore(s => s.getSummary)(); // or getState().getSummary()
+// summary → { forfeitedAmount, refundableAmount, daysRemaining,
+//             currentStreak, daysCompleted } or null
+```
+
+### Resolve a day (step-tracking teammate)
+
+After computing a day's pedometer total, compare it to the challenge's
+`dailyGoal.threshold` and record the result. Pass the real step count so
+it's stored on the `DayRecord`.
+
+```ts
+import { useChallengeStore } from '@/store/useChallengeStore';
+
+const challenge = useChallengeStore.getState().activeChallenge;
+if (challenge) {
+  const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+  const hit = stepsToday >= challenge.dailyGoal.threshold;
+  useChallengeStore.getState().recordDayResult(date, hit ? 'hit' : 'missed', stepsToday);
+}
+```
+
+When the last pending day resolves, the finished challenge is moved to
+`challengeHistory` and `activeChallenge` becomes `null`.
+
+### Demo helpers
+
+- `resetDemo()` — wipes `activeChallenge` + `challengeHistory` (and the
+  persisted copy). Call between demo runs.
+- `devFastForward(days, results?)` — **dev-only**. Auto-resolves the next
+  N pending days (scripted `results` or random hit/miss) so you can show a
+  mid-challenge or near-complete state on stage. No-op in production builds.

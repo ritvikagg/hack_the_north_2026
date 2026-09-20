@@ -17,12 +17,7 @@ export interface UserState {
 
 /** One recorded workout/step session. Produced by Person 2's pedometer layer. */
 export interface WorkoutEvent {
-  backendScore?: import('./domain/gaitScore').GaitScore;
   id: string;
-  startedAt?: string;
-  challengeId?: string;
-  unlockedAmount?: number;
-  ruleLabel?: string;
   timestamp: string;        // ISO
   steps: number;
   source: 'pedometer' | 'debug-injected'; // debug-injected = the demo safety button

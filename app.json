@@ -1,24 +1,19 @@
 {
   "expo": {
-    "name": "pledgefit",
-    "slug": "pledgefit",
+    "name": "expo-scaffold",
+    "slug": "expo-scaffold",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "pledgefit",
-    "userInterfaceStyle": "light",
+    "scheme": "exposcaffold",
+    "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
-      "infoPlist": {
-        "NSMotionUsageDescription": "Pledgefit uses phone motion to count steps and check walking sessions."
-      }
+      "icon": "./assets/expo.icon"
     },
     "android": {
-      "permissions": [
-        "android.permission.ACTIVITY_RECOGNITION"
-      ],
+      "permissions": ["android.permission.ACTIVITY_RECOGNITION"],
       "adaptiveIcon": {
-        "backgroundColor": "#F6F4E9",
+        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
@@ -26,7 +21,7 @@
       "predictiveBackGestureEnabled": false
     },
     "web": {
-      "output": "server",
+      "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
@@ -34,15 +29,9 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#F6F4E9",
+          "backgroundColor": "#208AEF",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
-        }
-      ],
-      [
-        "expo-sensors",
-        {
-          "motionPermission": "Allow pledgefit to count steps and validate walking motion."
         }
       ]
     ],

@@ -89,12 +89,6 @@ describe('createChallenge', () => {
 });
 
 describe('resolveDay', () => {
-  it('does not rewrite a resolved financial outcome', () => {
-    const c = createChallenge(30, 15, 5000, START);
-    const next = resolveDay(c, START, 'hit', 5000);
-    expect(resolveDay(next, START, 'hit', 6000)).toBe(next);
-    expect(() => resolveDay(next, START, 'missed')).toThrow(/already resolved/);
-  });
   it('marks a day hit and records actualSteps without mutating the original', () => {
     const c = createChallenge(150, 15, 5000, START);
     const next = resolveDay(c, START, 'hit', 7231);

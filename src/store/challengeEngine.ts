@@ -50,8 +50,6 @@ export function createChallenge(
   }
 
   const totalCents = toCents(depositAmount);
-  if (!Number.isSafeInteger(totalCents) || totalCents < 1) throw new Error('depositAmount must be at least $0.01 and within the supported range');
-  if (!Number.isSafeInteger(dailyThreshold)) throw new Error('dailyThreshold must be a positive whole number');
   const baseCents = Math.floor(totalCents / totalDays);
   const lastDayCents = totalCents - baseCents * (totalDays - 1);
 
@@ -84,12 +82,6 @@ export function resolveDay(
   const index = challenge.days.findIndex(d => d.date === date);
   if (index === -1) {
     throw new Error(`challenge ${challenge.id} has no day with date "${date}"`);
-  }
-  if (actualSteps !== undefined && (!Number.isSafeInteger(actualSteps) || actualSteps < 0)) throw new Error('actualSteps must be a nonnegative whole number');
-  const existing = challenge.days[index];
-  if (existing.status !== 'pending') {
-    if (existing.status !== result) throw new Error('This day is already resolved');
-    return challenge;
   }
 
   const days = challenge.days.map((d, i) =>

@@ -2,7 +2,6 @@ import { Accelerometer, DeviceMotion, Gyroscope } from 'expo-sensors';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { GaitAnalysis } from '../types';
-import { gaitCaptureToCsv } from './gaitCsv';
 
 type Subscription = { remove: () => void };
 
@@ -36,7 +35,6 @@ type ActiveCapture = {
 };
 
 let activeCapture: ActiveCapture | null = null;
-let captureGeneration = 0;
 const SAMPLE_INTERVAL_MS = 20; // Target 50 Hz; Android may choose a nearby supported rate.
 const MAX_SAMPLES = 60_000; // ~20 minutes at 50 Hz, so an accidental long session stays bounded.
 
@@ -56,7 +54,6 @@ const stddev = (values: number[]) => {
  */
 export async function startGaitCapture(label: string): Promise<void> {
   if (activeCapture) throw new Error('A gait capture is already running.');
-  const generation = ++captureGeneration;
 
   const [accelerometerAvailable, gyroscopeAvailable, motionAvailable] = await Promise.all([
     Accelerometer.isAvailableAsync(),
@@ -71,7 +68,6 @@ export async function startGaitCapture(label: string): Promise<void> {
   // system motion prompt, which must happen in response to the Start button.
   const permission = await DeviceMotion.requestPermissionsAsync();
   if (!permission.granted) throw new Error('Motion permission is required for gait validation.');
-  if (generation !== captureGeneration) throw new Error('Recording was cancelled.');
 
   Accelerometer.setUpdateInterval(SAMPLE_INTERVAL_MS);
   Gyroscope.setUpdateInterval(SAMPLE_INTERVAL_MS);
@@ -88,7 +84,6 @@ export async function startGaitCapture(label: string): Promise<void> {
     gyro: [0, 0, 0],
   };
 
-  activeCapture = capture;
   capture.subscriptions.push(
     Gyroscope.addListener(({ x, y, z }) => {
       capture.gyro = [x, y, z];
@@ -126,7 +121,6 @@ export function isGaitCaptureActive() {
 }
 
 export function cancelGaitCapture() {
-  captureGeneration++;
   activeCapture?.subscriptions.forEach(subscription => subscription.remove());
   activeCapture = null;
 }
@@ -224,8 +218,13 @@ function csvCell(value: number) {
 /** Writes the raw session to the app Documents directory and opens the system share sheet. */
 export async function shareGaitCsv(capture: GaitCapture): Promise<string> {
   if (!FileSystem.documentDirectory) throw new Error('The app document directory is unavailable.');
+  const header = 'session_id,label,t_ms,sensor_timestamp_s,accel_x_mps2,accel_y_mps2,accel_z_mps2,linear_accel_x_mps2,linear_accel_y_mps2,linear_accel_z_mps2,gravity_x_mps2,gravity_y_mps2,gravity_z_mps2,gyro_x_rads,gyro_y_rads,gyro_z_rads,orientation_alpha_deg,orientation_beta_deg,orientation_gamma_deg';
+  const rows = capture.samples.map(sample => [
+    capture.sessionId, capture.label, sample.tMs, sample.sensorTimestampS,
+    ...sample.accel, ...sample.linearAccel, ...sample.gravity, ...sample.gyro, ...sample.orientation,
+  ].map(value => typeof value === 'number' ? csvCell(value) : value).join(','));
   const uri = `${FileSystem.documentDirectory}${capture.sessionId}_${capture.label}.csv`;
-  await FileSystem.writeAsStringAsync(uri, gaitCaptureToCsv(capture));
+  await FileSystem.writeAsStringAsync(uri, [header, ...rows].join('\n'));
   if (await Sharing.isAvailableAsync()) {
     await Sharing.shareAsync(uri, { mimeType: 'text/csv', dialogTitle: 'Export gait session CSV' });
   }
