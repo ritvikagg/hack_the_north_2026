@@ -40,6 +40,15 @@ yarn-error.*
 
 example
 
+# private Codex project notes
+tasks/
+learn.md
+tracker.md
+AGENTS.md
+CLAUDE.md
+CODEX.md
+codex.md
+
 # generated native folders
 /ios
 /android
