@@ -1,15 +1,21 @@
-import { Pressable, View } from 'react-native';
+import { useState } from 'react';
+import { Pressable, TextInput, View } from 'react-native';
 import { router } from 'expo-router';
-import { AppText, AvatarStack, Badge, Icon, PageHeader, Screen, Surface } from '../../components/ui';
-import { colors } from '../../theme';
+import { AppText, AvatarStack, Button, ErrorNotice, PageHeader, Screen, Surface } from '../../components/ui';
+import { colors, errorMessage } from '../../theme';
 import { useDemo } from '../../state/DemoProvider';
-
 export default function Groups() {
-  const { demo } = useDemo();
-  return <Screen><PageHeader title="Your people. Your momentum." eyebrow="Groups" subtitle="A little encouragement goes a long way." action={<Badge label="Demo" tone="neutral" />} />
-    {demo.groups.map((group) => <Pressable key={group.id} accessibilityRole="button" accessibilityLabel={`Open ${group.name}`} onPress={() => router.push({ pathname: '/group/[id]', params: { id: group.id } })}>
-      <Surface style={{ gap: 18 }}><View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}><View style={{ padding: 14, borderRadius: 18, backgroundColor: colors.lime }}><Icon name="sunny-outline" size={30} /></View><Icon name="arrow-forward" /></View><AppText variant="title" style={{ fontSize: 29 }}>{group.name}</AppText><AppText color={colors.muted}>{group.description}</AppText><View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><AvatarStack users={demo.users.filter((user) => group.memberIds.includes(user.id))} /><AppText variant="caption" color={colors.muted}>{group.memberIds.length} members</AppText></View></Surface>
-    </Pressable>)}
-    <View style={{ marginTop: 28, paddingHorizontal: 8, gap: 10 }}><AppText style={{ fontWeight: '600' }}>Everyone brings something.</AppText><AppText color={colors.muted}>A shared goal. A little accountability. A reason to get out the door.</AppText><AppText variant="caption" color={colors.muted}>Explore the sample group to see challenges and friends.</AppText></View>
+  const { demo, dispatch, busy, storageError } = useDemo();
+  const [name, setName] = useState(''); const [code, setCode] = useState(''); const [error, setError] = useState<string | null>(null);
+  async function act(type: 'createGroup' | 'joinGroup') {
+    try { setError(null); const id = await dispatch(type === 'createGroup' ? { type, name } : { type, code }); setName(''); setCode(''); router.push({ pathname: '/group/[id]', params: { id: id! } }); } catch(e) { setError(errorMessage(e)); }
+  }
+  const input = { borderWidth: 1, borderColor: colors.line, borderRadius: 14, padding: 16, backgroundColor: colors.white, fontSize: 16, color: colors.ink };
+  return <Screen><PageHeader title="Your people. Your momentum." eyebrow="Groups" subtitle="A little encouragement goes a long way." />
+    <ErrorNotice message={error ?? storageError} />
+    {demo.groups.map((g) => <Pressable key={g.id} accessibilityRole="button" accessibilityLabel={'Open ' + g.name} onPress={() => router.push({ pathname: '/group/[id]', params: { id: g.id } })} style={{ marginBottom: 16 }}><Surface style={{ gap: 12 }}><AppText variant="title" style={{ fontSize: 28 }}>{g.name}</AppText><AvatarStack users={demo.users.filter((u) => g.memberIds.includes(u.id))} /><AppText>{g.memberIds.length} members</AppText></Surface></Pressable>)}
+    {!demo.groups.length && <AppText color={colors.muted}>Create a group or join your friends using their group code.</AppText>}
+    <Surface style={{ marginTop: 20, gap: 12 }}><AppText style={{ fontWeight: '600' }}>Start a group</AppText><TextInput accessibilityLabel="Group name" placeholder="Group name" value={name} onChangeText={setName} maxLength={60} editable={!busy} style={input} /><Button label="Create group" disabled={busy || !name.trim()} onPress={() => void act('createGroup')} /></Surface>
+    <Surface style={{ marginTop: 20, gap: 12 }}><AppText style={{ fontWeight: '600' }}>Find your people</AppText><TextInput accessibilityLabel="Group invite code" placeholder="Group invite code" value={code} onChangeText={setCode} autoCapitalize="characters" autoCorrect={false} maxLength={20} editable={!busy} style={input} /><Button label="Join group" disabled={busy || !code.trim()} onPress={() => void act('joinGroup')} /></Surface>
   </Screen>;
 }
