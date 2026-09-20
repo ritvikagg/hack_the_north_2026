@@ -62,7 +62,7 @@ export interface PartyDetails {
   myDayRecords: PartyDayRecord[];
 }
 
-async function requireUserId(): Promise<string> {
+export async function requireUserId(): Promise<string> {
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) {
     throw new Error('You must be signed in to do that.');

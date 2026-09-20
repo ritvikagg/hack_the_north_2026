@@ -52,6 +52,12 @@ and granted only to `authenticated`.
 | `member_in_active_party(member_id)` | the member row belongs to the caller **and** its party is `'active'` |
 | `member_row_in_my_party(member_id)` | the member row's party is one the caller belongs to |
 
+### Write-path functions (`security definer`)
+
+| Function | Purpose |
+| --- | --- |
+| `refresh_member_status(member_id)` → `text` | The only client-reachable write to `party_members.status`. Verifies the row belongs to `auth.uid()` and its party is `'active'`, then **re-derives** the status from `party_day_records` (any `missed` → `failed`; all `total_days` resolved with none missed → `completed`; else stays `active`). Callers cannot self-assign a status. `payout_amount`/`winner_id` are never touched — those belong to the settle function. |
+
 ### `profiles`
 
 | Policy | Operation | Rule | Why |
@@ -75,7 +81,7 @@ and granted only to `authenticated`.
 | `party_members_select` | SELECT | `is_party_member(party_id)` | only members can see a party's roster — pledges and standings are not public. |
 | `party_members_insert` | INSERT | `user_id = auth.uid()` AND `status = 'active'` AND `payout_amount IS NULL` AND `party_is_open(party_id)` | a user can join only themselves and only while the party is open; they cannot self-assign `completed` or a payout at join time. |
 | `party_members_delete_open` | DELETE | `user_id = auth.uid()` AND `party_is_open(party_id)` | a user may leave by deleting their own row while the party is still open; once it starts, the row is settlement state. |
-| — | UPDATE | *(no policy → denied)* | `status` and `payout_amount` are settlement outputs and must **never** be user-writable. There is intentionally no UPDATE policy, so no column on this table is client-mutable. |
+| — | UPDATE | *(no policy → denied)* | `status` and `payout_amount` are settlement outputs and must **never** be user-writable. There is intentionally no UPDATE policy; the only write path is `refresh_member_status()` above, which derives the status itself. |
 
 ### Views
 
@@ -91,6 +97,15 @@ and granted only to `authenticated`.
 | `day_records_insert` | INSERT | `member_in_active_party(party_member_id)` | a user can create day records only for their own membership row and only while the party is `'active'`. |
 | `day_records_update` | UPDATE | same for USING and WITH CHECK | users may correct their own in-progress records, but cannot edit another member's row or keep editing after settlement/closure. |
 | — | DELETE | *(no policy → denied)* | records are audit history for settlement; deletion is never allowed from the client. |
+
+## Realtime
+
+`party_members` and `party_day_records` are in the `supabase_realtime`
+publication so `usePartyRealtime` (`src/lib/usePartyRealtime.ts`) can stream
+live standings. RLS applies to realtime subscriptions — members only receive
+rows they can already read. `party_members` and `parties` use
+`REPLICA IDENTITY FULL` so DELETE events still match `party_id`/`id`
+subscription filters.
 
 ## Caveats for the settlement function (later change)
 
