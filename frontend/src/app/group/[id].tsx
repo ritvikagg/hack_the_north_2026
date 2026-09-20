@@ -1,9 +1,11 @@
 import { Pressable, Share, View } from 'react-native';
 import { useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
+import QRCode from 'react-native-qrcode-svg';
 import { AppText, Avatar, Badge, Button, Divider, EmptyState, ErrorNotice, Icon, PageHeader, Screen, Surface } from '../../components/ui';
 import { colors, goalText, money, errorMessage } from '../../theme';
 import { useDemo } from '../../state/DemoProvider';
+import { buildGroupInvitePayload } from '../../services/groupInvite';
 
 export default function GroupDetail() {
   const { demo, userById } = useDemo();
@@ -14,7 +16,16 @@ export default function GroupDetail() {
   const challenges = demo.challenges.filter((challenge) => challenge.groupId === group.id);
   return <Screen><PageHeader back title={`${group.name}.`} eyebrow="Your group" subtitle={group.description} action={<Badge label="Demo" tone="neutral" />} />
     <View style={{ gap: 12, marginBottom: 26 }}><AppText style={{ fontSize: 18, fontWeight: '600' }}>The crew</AppText><View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 20 }}>{group.memberIds.map((userId) => <View key={userId} style={{ alignItems: 'center', gap: 5 }}><Avatar user={userById(userId)} size={52} /><AppText variant="caption">{userById(userId)?.name}</AppText></View>)}</View></View>
-    <Surface style={{ marginBottom: 20, gap: 12 }}><AppText variant="label">GROUP INVITE CODE</AppText><AppText selectable style={{ fontSize: 24 }}>{group.inviteCode}</AppText><Button label="Share group invite" variant="secondary" onPress={() => void Share.share({ message: `Join our Pledgefit group with code ${group.inviteCode}. Enter it on the Groups tab.` }).catch((e) => setError(errorMessage(e)))} /></Surface>
+    <Surface style={{ marginBottom: 20, gap: 16, alignItems: 'center' }}>
+      <AppText variant="label">GROUP INVITE QR</AppText>
+      <View accessible accessibilityRole="image" accessibilityLabel={`QR code for group invite ${group.inviteCode}`} style={{ padding: 14, backgroundColor: '#FFFFFF', borderRadius: 16 }}>
+        <QRCode value={buildGroupInvitePayload(group.inviteCode)} size={210} color={colors.ink} backgroundColor="#FFFFFF" />
+      </View>
+      <AppText color={colors.muted} style={{ textAlign: 'center' }}>Friends can scan this from the Groups tab to join instantly.</AppText>
+      <AppText variant="label">OR ENTER THE CODE</AppText>
+      <AppText selectable style={{ fontSize: 24, letterSpacing: 2 }}>{group.inviteCode}</AppText>
+      <Button label="Share group invite" variant="secondary" style={{ alignSelf: 'stretch' }} onPress={() => void Share.share({ message: `Join our Pledgefit group with code ${group.inviteCode}. Enter it on the Groups tab.` }).catch((e) => setError(errorMessage(e)))} />
+    </Surface>
     <ErrorNotice message={error} />
     <Button label="Host a group challenge" icon="add" onPress={() => router.push({ pathname: '/create', params: { groupId: group.id } })} />
     <Divider /><AppText style={{ fontSize: 18, fontWeight: '600', marginBottom: 16 }}>Group challenges</AppText>
