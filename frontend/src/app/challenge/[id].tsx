@@ -71,7 +71,7 @@ export default function ChallengeDetail() {
       {runs.map((run) => <View key={run.id} style={{ paddingVertical: 12 }}><AppText>{distance(run.distanceMeters)} · {Math.round(run.durationSeconds / 60)} min</AppText><AppText variant="caption" color={colors.muted}>{new Date(run.completedAt).toLocaleDateString()} · Simulated run</AppText></View>)}
     </>}
     {me && !lobby && !settled && <>
-      <Divider /><Button label="Verify a real walk · coming soon" variant="secondary" disabled onPress={() => {}} />
+      <Divider /><Button label="Verify a real walk" variant="secondary" disabled={busy || goalMet || expired} onPress={() => router.push({ pathname: '/challenge/[id]/verify', params: { id } })} />
       <Surface style={{ marginTop: 18, gap: 12 }}>
         <Badge label="Hackathon controls" tone="peach" /><AppText>Test the full challenge without walking. Only your own progress changes.</AppText>
         <Button label="Simulate a completed run" disabled={busy || goalMet || expired} onPress={() => void perform('addRun')} />
