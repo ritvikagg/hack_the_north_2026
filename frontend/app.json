@@ -12,7 +12,8 @@
     },
     "android": {
       "permissions": [
-        "android.permission.ACTIVITY_RECOGNITION"
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.HIGH_SAMPLING_RATE_SENSORS"
       ],
       "adaptiveIcon": {
         "backgroundColor": "#F6F4E9",
@@ -28,7 +29,10 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router"
+      "expo-router",
+      "expo-asset",
+      "onnxruntime-react-native",
+      "./plugins/withShortCmakePath"
     ],
     "experiments": {
       "typedRoutes": true

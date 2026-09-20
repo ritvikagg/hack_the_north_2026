@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { View } from 'react-native';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { AppText, Avatar, Badge, Button, Divider, ErrorNotice, PageHeader, Screen, Surface } from '../../components/ui';
 import { colors, distance, errorMessage, money } from '../../theme';
 import { useDemo } from '../../state/DemoProvider';
@@ -20,6 +20,7 @@ export default function You() {
     <Surface style={{ marginTop: 20, flexDirection: 'row', justifyContent: 'space-around' }}><View style={{ alignItems: 'center' }}><AppText variant="number">{runs.length}</AppText><AppText variant="caption" color={colors.muted}>Verified runs</AppText></View><View style={{ width: 1, backgroundColor: colors.line }} /><View style={{ alignItems: 'center' }}><AppText variant="number" style={{ fontSize: 32 }}>{distance(runs.reduce((sum, run) => sum + run.distanceMeters, 0))}</AppText><AppText variant="caption" color={colors.muted}>Across your demo</AppText></View></Surface>
     <Surface style={{ marginTop: 14, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}><View><AppText style={{ fontWeight: '600' }}>Bonus earned</AppText><AppText variant="caption" color={colors.muted}>Simulated · excludes returned pledges</AppText></View><AppText style={{ fontWeight: '600', fontSize: 24 }}>{money(earned)}</AppText></Surface>
     <Divider /><Button label="Your challenges & pledges" variant="secondary" icon="footsteps-outline" onPress={() => router.navigate('/home')} />
+    <Button label="Gait calibration (optional)" variant="secondary" icon="person-outline" onPress={() => router.push('/gait-enrollment' as Href)} />
     <Button label="How pledgefit works" variant="ghost" icon="leaf-outline" onPress={() => router.push('/how-it-works')} />
     <Divider /><AppText variant="caption" color={colors.muted} style={{ textAlign: 'center', marginBottom: 16 }}>Demo changes are saved on this device. Activity and money are simulated.</AppText>
     <ErrorNotice message={error} />

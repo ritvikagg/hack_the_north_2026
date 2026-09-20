@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router';
 import { AppText, Badge, Button, ErrorNotice, Icon, PageHeader, Screen, Surface } from '../../../components/ui';
 import { colors, errorMessage } from '../../../theme';
 import { useDemo } from '../../../state/DemoProvider';
-import { cancelGaitVerification, enrollGaitBaseline, gaitBaselineSessions, type GaitVerification, startGaitVerification, stopGaitVerification } from '../../../services/gaitVerification';
+import { cancelGaitVerification, type GaitVerification, startGaitVerification, stopGaitVerification } from '../../../services/gaitVerification';
+import { getActiveGaitProfile } from '../../../services/gaitProfileStorage';
 
 export default function VerifyWalk() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -13,27 +14,27 @@ export default function VerifyWalk() {
   const [seconds, setSeconds] = useState(0);
   const [result, setResult] = useState<GaitVerification | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [mode, setMode] = useState<'enrollment' | 'verification'>('verification');
-  const [baselineCount, setBaselineCount] = useState(0);
+  const [profileSource, setProfileSource] = useState<'bundled' | 'runtime'>('bundled');
   const challenge = challengeById(id);
 
+  useFocusEffect(useCallback(() => {
+    void getActiveGaitProfile().then((activeProfile) => setProfileSource(activeProfile.source)).catch(() => {});
+  }, []));
   useEffect(() => {
     if (!recording) return;
     const timer = setInterval(() => setSeconds((value) => value + 1), 1000);
     return () => clearInterval(timer);
   }, [recording]);
   useEffect(() => () => cancelGaitVerification(), []);
-  useEffect(() => { void gaitBaselineSessions().then(setBaselineCount); }, []);
 
-  async function start(nextMode: 'enrollment' | 'verification' = 'verification') {
+  async function start() {
     setError(null); setResult(null); setSeconds(0);
-    try { setMode(nextMode); await startGaitVerification(nextMode); setRecording(true); } catch (cause) { setError(errorMessage(cause)); }
+    try { await startGaitVerification(); setRecording(true); } catch (cause) { setError(errorMessage(cause)); }
   }
   async function stop() {
     try { setResult(await stopGaitVerification()); } catch (cause) { setError(errorMessage(cause)); }
     finally { setRecording(false); }
   }
-  async function saveBaseline() { if (!result?.walkSignalsVerified) return; try { setBaselineCount(await enrollGaitBaseline(result)); setResult(null); } catch (cause) { setError(errorMessage(cause)); } }
   async function saveVerifiedWalk() {
     if (!result?.verified) return;
     setError(null);
@@ -45,27 +46,30 @@ export default function VerifyWalk() {
 
   if (!challenge) return <Screen><PageHeader title="Challenge not found" back /><AppText>Return to your challenges and try again.</AppText></Screen>;
   return <Screen>
-    <PageHeader back eyebrow="Gait mechanics check" title="Verify a walk" subtitle="Gait mechanics and your enrolled baseline must agree." />
+    <PageHeader back eyebrow="On-device gait check" title="Verify a walk" subtitle="The walking model and active owner profile must agree." action={<Badge label={profileSource === 'runtime' ? 'Personal profile' : 'Bundled profile'} tone={profileSource === 'runtime' ? 'green' : 'neutral'} />} />
     <ErrorNotice message={error} onDismiss={() => setError(null)} />
     <Surface dark style={{ gap: 14, marginBottom: 20 }}>
       <Icon name={recording ? 'radio-outline' : result?.verified ? 'checkmark-circle-outline' : 'walk-outline'} color={colors.lime} size={37} />
       <AppText color={colors.cream} variant="title" style={{ fontSize: 30 }}>{recording ? `${seconds}s walking check` : result?.verified ? 'Walk verified' : 'Ready when you are'}</AppText>
-      <AppText color="#D2DDCE">{recording ? 'Keep the phone in your pocket, walk naturally, and keep the app open.' : result?.reason ?? (baselineCount < 2 ? `Enroll ${2 - baselineCount} more real walk${2 - baselineCount === 1 ? '' : 's'} first.` : 'Walk naturally for at least 15 seconds.')}</AppText>
+      <AppText color="#D2DDCE">{recording ? 'Keep the phone in your pocket, walk naturally for at least 15 seconds, and keep the app open.' : result?.reason ?? 'Walk naturally for at least 15 seconds. Scoring stays on this phone.'}</AppText>
       {result && <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
         <Badge label={`${result.steps} steps`} tone="green" />
         <Badge label={`${Math.round(result.sampleRateHz)} Hz`} tone="green" />
-        <Badge label={`${Math.round(result.cadenceSpm)} steps/min`} tone="green" />
+        <Badge label={`${result.modelWindowCount} model windows`} tone="green" />
+        <Badge label={`${Math.round(result.modelIdentityWindowFraction * 100)}% profile match`} tone="green" />
+        <Badge label={result.profileSource === 'runtime' ? 'Personal profile' : 'Bundled profile'} tone="neutral" />
       </View>}
     </Surface>
-    {!recording && !result && <Button label={baselineCount < 2 ? 'Enroll a baseline walk' : 'Start walking check'} icon="play-outline" onPress={() => void start(baselineCount < 2 ? 'enrollment' : 'verification')} />}
+    {!recording && !result && <Button label="Start walking check" icon="play-outline" onPress={() => void start()} />}
     {recording && <Button label="Stop and check" icon="stop-outline" onPress={() => void stop()} />}
     {result && <View style={{ gap: 10 }}>
-      {mode === 'enrollment' && result.walkSignalsVerified ? <Button label="Save this baseline walk" icon="finger-print-outline" onPress={() => void saveBaseline()} /> : result.verified ? <Button label="Record verified demo run" icon="checkmark" loading={busy} onPress={() => void saveVerifiedWalk()} /> : <Button label="Try another walk" icon="refresh-outline" onPress={() => void start(baselineCount < 2 ? 'enrollment' : 'verification')} />}
+      {result.verified ? <Button label="Record verified demo run" icon="checkmark" loading={busy} onPress={() => void saveVerifiedWalk()} /> : <Button label="Try another walk" icon="refresh-outline" onPress={() => void start()} />}
       <Button label="Cancel" variant="ghost" onPress={() => router.back()} />
     </View>}
     <Surface style={{ marginTop: 22, gap: 8 }}>
       <AppText variant="label" color={colors.muted}>WHAT THIS CHECKS</AppText>
-      <AppText variant="caption" color={colors.muted}>Checks heel-strike rhythm, rotation coupling, vibration, and a local two-walk baseline. It works indoors without location, but is anti-cheat support—not medical or identity proof.</AppText>
+      <Button label={profileSource === 'runtime' ? 'Manage gait calibration' : 'Calibrate my gait (optional)'} variant="secondary" icon="person-outline" disabled={recording} onPress={() => router.push('/gait-enrollment' as Href)} />
+      <AppText variant="caption" color={colors.muted}>Runs a 25K-parameter gait model entirely on this phone. It checks walking activity and the active owner signature without location or network access. It is anti-cheat support—not medical identification.</AppText>
     </Surface>
   </Screen>;
 }

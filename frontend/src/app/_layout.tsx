@@ -21,6 +21,7 @@ function AppLayout() {
         <Stack.Screen name="group/[id]" />
         <Stack.Screen name="join" />
         <Stack.Screen name="create" />
+        <Stack.Screen name="gait-enrollment" options={{ presentation: 'modal' }} />
         <Stack.Screen name="how-it-works" options={{ presentation: 'modal' }} />
       </Stack>
       <StatusBar style="dark" />
